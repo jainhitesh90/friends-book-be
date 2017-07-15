@@ -1,2 +1,1 @@
-# firstNodeJsApp
-# AllInOneBlogs
+# AllInOneBlogs NodeJs app (Backend)
