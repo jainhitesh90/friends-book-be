@@ -1,6 +1,18 @@
 module.exports = function (app, db) {
     var ObjectID = require('mongodb').ObjectID;
 
+    /* READ ALL */
+    app.get('/blog/list', (req, res) => {
+        var cursor = db.collection('blogs').find({});
+        cursor.toArray(function (err, docs) {
+            if (err) {
+                res.send(errorResponse(err.errmsg));
+            } else {
+                res.send(successResponse(null, docs))
+            }
+        });
+    });
+
     /* CREATE */
     app.post('/blog/add', (req, res) => {
         if (req.body.title == null || req.body.title == '') {
@@ -52,7 +64,7 @@ module.exports = function (app, db) {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
                 } else {
-                    res.send(successResponse(null, result.ops[0]))
+                    res.send(successResponse('Blog updated successfully', null))
                 }
             });
         }
@@ -76,43 +88,39 @@ module.exports = function (app, db) {
 
     });
 
-    /* READ ALL */
-    app.get('/blog/list', (req, res) => {
-        var cursor = db.collection('blogs').find({});
-        cursor.toArray(function (err, docs) {
-            if (err) {
-                res.send(errorResponse(err.errmsg));
-            } else {
-                res.send(successResponse(null, docs))
-            }
-        });
-    });
-
     /* Find blogs by category */
-    app.get('/blog/getBlogsByCategory', (req, res) => {
-        if (req.body.category == null || req.body.category == '') {
-            res.send(errorResponse('Category name  missing'));
+    app.get('/blog/getBlogsByCategory/:category', (req, res) => {
+        if (req.params.category == null || req.params.category == '') {
+            res.send(errorResponse('Category name missing'));
         } else {
-            var cursor = db.collection('blogs').find({ category: req.body.category });
-            if (err) {
-                res.send(errorResponse(err.errmsg));
-            } else {
-                res.send(successResponse(null, docs))
-            }
+            var cursor = db.collection('blogs').find({ 
+                category : req.params.category
+            });
+            cursor.toArray(function (err, docs) {
+                if (err) {
+                    res.send(errorResponse(err.errmsg));
+                } else {
+                    res.send(successResponse(null, docs))
+                }
+            });
         }
     });
 
-    /* Find blogs by category keyword */
-    app.get('/blog/getBlogsByCategory', (req, res) => {
-        if (req.body.keyword == null || req.body.keyword == '') {
+    /* Find blogs by keyword */
+    app.get('/blog/search/:keyword', (req, res) => {
+        if (req.params.keyword == null || req.params.keyword == '') {
             res.send(errorResponse('Keyword missing'));
         } else {
-            var cursor = db.collection('blogs').find({ title: req.body.keyword } || { description: req.body.keyword });
-            if (err) {
-                res.send(errorResponse(err.errmsg));
-            } else {
-                res.send(successResponse(null, docs))
-            }
+            var cursor = db.collection('blogs').find({ 
+                title : {$regex : ".*" + req.params.keyword + ".*", '$options' : 'i'}
+            });
+            cursor.toArray(function (err, docs) {
+                if (err) {
+                    res.send(errorResponse(err.errmsg));
+                } else {
+                    res.send(successResponse(null, docs))
+                }
+            });
         }
     });
 };
