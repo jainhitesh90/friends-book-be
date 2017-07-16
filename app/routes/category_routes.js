@@ -30,7 +30,7 @@ module.exports = function (app, db) {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
                 } else {
-                    res.send(successResponse('Category updated successfully', null))
+                    res.send(successResponse('Category updated successfully', category))
                 }
             });
         }

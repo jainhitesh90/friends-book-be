@@ -6,7 +6,16 @@ const app = express();
 
 const port = 8080;
 
-app.use(bodyParser.urlencoded({ extended: true })); //parsing the body parameters 
+var allowCrossDomain = function(req, res, next) {
+    res.header('Access-Control-Allow-Origin', "*");
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    next();
+}
+
+app.use(bodyParser.json({ extended: true })); //parsing the body parameters 
+
+app.use(allowCrossDomain);
 
 MongoClient.connect(db.url, (err, database) => {
   if (err) return console.log(err)

@@ -59,7 +59,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            const blog = { title: req.body.title, description: req.body.description, category: req.body.category, fullUrl: req.body.fullUrl };
+            const blog = { title: req.body.title, description: req.body.description, categoryId : req.body.categoryId, fullUrl: req.body.fullUrl };
             db.collection('blogs').update(details, blog, (err, result) => {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
@@ -100,11 +100,13 @@ module.exports = function (app, db) {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
                 } else {
-                    res.send(successResponse(null, docs))
+                    res.send(successResponse(null, docs[0]))
                 }
             });
         }
     });
+
+    
 
     /* Find blogs by keyword */
     app.get('/blog/search/:keyword', (req, res) => {
