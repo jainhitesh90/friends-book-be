@@ -1,9 +1,14 @@
+var database = null
+
 module.exports = function (app, db) {
+    database = db
     var ObjectID = require('mongodb').ObjectID;
     var indexJs = require('./index.js');
 
     /* CREATE */
-    app.post('/category/add', (req, res) => {
+
+    app.post('/category/add', isAuthenticated, function (req, res) {
+        console.log("2")
         if (req.body.category == null || req.body.category == '') {
             res.send(errorResponse('Category missing'));
         } else {
@@ -19,7 +24,7 @@ module.exports = function (app, db) {
     });
 
     /* UPDATE */
-    app.put('/category/update/:id', (req, res) => {
+    app.put('/category/update/:id', isAuthenticated, (req, res) => {
         if (req.params.id == null || req.params.id.length != 24) {
             res.send(errorResponse('Invalid ID'));
         } else {
@@ -37,9 +42,9 @@ module.exports = function (app, db) {
     });
 
     /* DELETE */
-    app.delete('/category/delete/:id', (req, res) => {
+    app.delete('/category/delete/:id', isAuthenticated, (req, res) => {
         if (req.params.id == null || req.params.id.length != 24) {
-            res.send(errorResponse('Invalid ID')); 
+            res.send(errorResponse('Invalid ID'));
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
@@ -55,8 +60,7 @@ module.exports = function (app, db) {
 
     /* READ ALL */
     app.get('/category/list', (req, res) => {
-        var cursor = db.collection('categories').find({});
-        cursor.toArray(function (err, docs) {
+        db.collection('categories').find({}).toArray(function (err, docs) {
             if (err) {
                 res.send(errorResponse(err.errmsg));
             } else {
@@ -77,4 +81,20 @@ function successResponse(message, data) {
         return { success: true, data: data }
     if (message != null)
         return { success: true, message: message }
+}
+
+function isAuthenticated(req, res, next) {
+    if (req.get('authToken') == null)
+        res.send(errorResponse("Token is not present"));
+    else {
+        var authToken = req.get('authToken')
+        var cursor = database.collection('admin').find({ authToken: authToken });
+        cursor.toArray(function (err, docs) {
+            if (docs.length == 0) {
+                res.send(errorResponse("Token invalid"));
+            } else if (docs.length > 0) {
+                return next();
+            }
+        });
+    }
 }

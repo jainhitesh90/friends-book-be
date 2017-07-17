@@ -9,7 +9,7 @@ const port = 8080;
 var allowCrossDomain = function(req, res, next) {
     res.header('Access-Control-Allow-Origin', "*");
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, authToken');
     next();
 }
 
@@ -21,7 +21,7 @@ MongoClient.connect(db.url, (err, database) => {
   if (err) return console.log(err)
   require('./app/routes')(app, database);
   app.listen(port, () => {
-    console.log('We are live on ' + port);
+    console.log('Wewweee arrre live on ' + port);
 
     /* blogs collection */
     database.createCollection('blogs')

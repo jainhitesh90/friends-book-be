@@ -1,20 +1,11 @@
+var database = null
+
 module.exports = function (app, db) {
+    database = db
     var ObjectID = require('mongodb').ObjectID;
 
-    /* READ ALL */
-    app.get('/blog/list', (req, res) => {
-        var cursor = db.collection('blogs').find({});
-        cursor.toArray(function (err, docs) {
-            if (err) {
-                res.send(errorResponse(err.errmsg));
-            } else {
-                res.send(successResponse(null, docs))
-            }
-        });
-    });
-
-    /* CREATE */
-    app.post('/blog/add', (req, res) => {
+     /* CREATE */
+    app.post('/blog/add', isAuthenticated, (req, res) => {
         if (req.body.title == null || req.body.title == '') {
             res.send(errorResponse('Title missing'));
         } else if (req.body.description == null || req.body.description == '') {
@@ -45,25 +36,8 @@ module.exports = function (app, db) {
         }
     });
 
-    /* READ */
-    app.get('/blog/:id', (req, res) => {
-        if (req.params.id == null) {
-            res.send(errorResponse('Blog id missing'));
-        } else {
-            const id = req.params.id;
-            const details = { '_id': new ObjectID(id) };
-            db.collection('blogs').findOne(details, (err, item) => {
-                if (err) {
-                    res.send(errorResponse(err.errmsg));
-                } else {
-                    res.send(successResponse(null, item))
-                }
-            });
-        }
-    });
-
     /* UPDATE */
-    app.put('/blog/update/:id', (req, res) => {
+    app.put('/blog/update/:id', isAuthenticated, (req, res) => {
         if (req.params.id == null) {
             res.send(errorResponse('Blog id missing'));
         } else {
@@ -81,7 +55,7 @@ module.exports = function (app, db) {
     });
 
     /* DELETE */
-    app.delete('/blog/delete/:id', (req, res) => {
+    app.delete('/blog/delete/:id', isAuthenticated, (req, res) => {
         if (req.params.id == null) {
             res.send(errorResponse('Blog id missing'));
         } else {
@@ -98,6 +72,35 @@ module.exports = function (app, db) {
 
     });
 
+     /* READ ALL */
+    app.get('/blog/list', (req, res) => {
+        var cursor = db.collection('blogs').find({});
+        cursor.toArray(function (err, docs) {
+            if (err) {
+                res.send(errorResponse(err.errmsg));
+            } else {
+                res.send(successResponse(null, docs))
+            }
+        });
+    });
+
+    /* READ */
+    app.get('/blog/:id', (req, res) => {
+        if (req.params.id == null) {
+            res.send(errorResponse('Blog id missing'));
+        } else {
+            const id = req.params.id;
+            const details = { '_id': new ObjectID(id) };
+            db.collection('blogs').findOne(details, (err, item) => {
+                if (err) {
+                    res.send(errorResponse(err.errmsg));
+                } else {
+                    res.send(successResponse(null, item))
+                }
+            });
+        }
+    });
+    
     /* Find blogs by category */
     app.get('/blog/getBlogsByCategory/:category', (req, res) => {
         if (req.params.categoryId == null || req.params.categoryId == '') {
@@ -150,4 +153,20 @@ function successResponse(message, data) {
         return { success: true, data: data }
     if (message != null)
         return { success: true, message: message }
+}
+
+function isAuthenticated(req, res, next) {
+    if (req.get('authToken') == null)
+        res.send(errorResponse("Token is not present"));
+    else {
+        var authToken = req.get('authToken')
+        var cursor = database.collection('admin').find({ authToken: authToken });
+        cursor.toArray(function (err, docs) {
+            if (docs.length == 0) {
+                res.send(errorResponse("Token invalid"));
+            } else if (docs.length > 0) {
+                return next();
+            }
+        });
+    }
 }
