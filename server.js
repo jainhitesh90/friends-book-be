@@ -34,5 +34,9 @@ MongoClient.connect(db.url, (err, database) => {
     /* user collection */
     database.createCollection('users')
     database.collection('users').ensureIndex({ email : 1 }, { unique: true });
+
+    /* admin collection */
+    database.createCollection('admin')
+    database.collection('admin').ensureIndex({ userName : 1 }, { unique: true });
   });
 })

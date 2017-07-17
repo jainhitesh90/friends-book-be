@@ -20,17 +20,27 @@ module.exports = function (app, db) {
         } else if (req.body.description == null || req.body.description == '') {
             res.send(errorResponse('Description missing'));
         } else if (req.body.category == null || req.body.category == '') {
-            res.send(errorResponse('Category missing'));
+            res.send(errorResponse('Category Name missing'));
         } else if (req.body.fullUrl == null || req.body.fullUrl == '') {
             res.send(errorResponse('Full URL missing'));
         } else {
-            const blog = { title: req.body.title, description: req.body.description, category: req.body.category, fullUrl: req.body.fullUrl };
-            db.collection('blogs').insert(blog, (err, result) => {
-                if (err) {
+            //validate category name first
+            var cursor = db.collection('categories').find({
+                category: req.params.category
+            });
+            cursor.toArray(function (err, docs) {
+                if (err) { //invalid category name
                     res.send(errorResponse(err.errmsg));
-                } else {
-                    res.send(successResponse(null, result.ops[0]))
-                }
+                } else { //valid category name
+                    const blog = { title: req.body.title, description: req.body.description, category: req.body.category, fullUrl: req.body.fullUrl };
+                    db.collection('blogs').insert(blog, (err, result) => {
+                        if (err) {
+                            res.send(errorResponse(err.errmsg));
+                        } else {
+                            res.send(successResponse(null, result.ops[0]))
+                        }
+                    });
+                } 
             });
         }
     });
@@ -59,7 +69,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            const blog = { title: req.body.title, description: req.body.description, categoryId : req.body.categoryId, fullUrl: req.body.fullUrl };
+            const blog = { title: req.body.title, description: req.body.description, category: req.body.category, fullUrl: req.body.fullUrl };
             db.collection('blogs').update(details, blog, (err, result) => {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
@@ -90,11 +100,11 @@ module.exports = function (app, db) {
 
     /* Find blogs by category */
     app.get('/blog/getBlogsByCategory/:category', (req, res) => {
-        if (req.params.category == null || req.params.category == '') {
-            res.send(errorResponse('Category name missing'));
+        if (req.params.categoryId == null || req.params.categoryId == '') {
+            res.send(errorResponse('Category Id missing'));
         } else {
-            var cursor = db.collection('blogs').find({ 
-                category : req.params.category
+            var cursor = db.collection('blogs').find({
+                categoryId: req.params.categoryId
             });
             cursor.toArray(function (err, docs) {
                 if (err) {
@@ -106,15 +116,17 @@ module.exports = function (app, db) {
         }
     });
 
-    
-
     /* Find blogs by keyword */
     app.get('/blog/search/:keyword', (req, res) => {
         if (req.params.keyword == null || req.params.keyword == '') {
             res.send(errorResponse('Keyword missing'));
         } else {
-            var cursor = db.collection('blogs').find({ 
-                title : {$regex : ".*" + req.params.keyword + ".*", '$options' : 'i'}
+            var cursor = db.collection('blogs').find({
+                $or: [
+                    { title: { $regex: ".*" + req.params.keyword + ".*", '$options': 'i' } },
+                    { description: { $regex: ".*" + req.params.keyword + ".*", '$options': 'i' } }
+                ]
+                //title : {$regex : ".*" + req.params.keyword + ".*", '$options' : 'i'}
             });
             cursor.toArray(function (err, docs) {
                 if (err) {

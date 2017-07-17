@@ -29,7 +29,6 @@ module.exports = function (app, db) {
                     res.send(successResponse('Welcome back!!', docs[0]))
                 } else {
                     /* create profile */
-                    var authToken = getToken(req.body.email)
                     const userObject = {
                         email: req.body.email,
                         name: req.body.name,
@@ -38,10 +37,14 @@ module.exports = function (app, db) {
                         token: req.body.token,
                         uid: req.body.uid
                     };
+                    var authToken = getToken(userObject)
                     db.collection('users').insert(userObject, (err, result) => {
                         if (err) {
-                            if (String(err.errmsg).includes('E11000')) // duplicate email id
-                                res.send(errorResponse("Please login using proper social media account"));
+                            if (String(err.errmsg).includes('duplicate')) // duplicate email id
+                                if (req.body.provider == 'facebook')
+                                    res.send(errorResponse("Please login via gmail, you've registered using your gmail account"));
+                                else
+                                    res.send(errorResponse("Please login via facebook, you've registered using your facebook account"));
                             else
                                 res.send(errorResponse(err.errmsg))
                         } else {
@@ -67,10 +70,10 @@ module.exports = function (app, db) {
 };
 
 /* get AWT authToken */
-function getToken(email) {
+function getToken(userObject) {
     const db = require('../../config/db');
     var jwt = require('jsonwebtoken');
-    var authToken = jwt.sign({ email: email }, db.secretKey, {
+    var authToken = jwt.sign(userObject, db.secretKey, {
         expiresIn: 365 * 24 * 60  // expires in 1 year
     });
     return authToken;
