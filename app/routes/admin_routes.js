@@ -12,7 +12,6 @@ module.exports = function (app, db) {
             res.send(errorResponse('password missing'));
         } else {
             var authToken = getToken({ userName: req.body.userName, password: req.body.password })
-            console.log("authToken : " + authToken)
             const adminObject = { userName: req.body.userName, authToken: authToken };
             db.collection('admin').insert(adminObject, (err, result) => {
                 if (err) {
@@ -42,9 +41,9 @@ module.exports = function (app, db) {
                 } else if (docs.length == 0) {
                     res.send(errorResponse("Username not found"));
                 } else {
-                    var decryptedAdminObject = decryptPassword(docs[0].authToken)
-                    if (decryptedAdminObject != null && decryptedAdminObject.password != null) {
-                        if (req.body.password == decryptedAdminObject.password)
+                    var decryptedPassword = decryptPassword(docs[0].authToken)
+                    if (decryptedPassword != null) {
+                        if (req.body.password == decryptedPassword)
                             res.send(successResponse('Welcome Admin!! ', docs[0]))
                         else
                             res.send(errorResponse("Invalid password"));
@@ -65,10 +64,11 @@ function getToken(userObject) {
 /* decode authToken */
 function decryptPassword(token) {
     var decryptedAdminObject = jwt.verify(token, db.secretKey)
-    if (decryptedAdminObject != null)
+    if (decryptedAdminObject != null) {
         return decryptedAdminObject.password
-    else
-        return null
+    } else {
+         return null
+    }
 }
 
 function errorResponse(errorMsg) {

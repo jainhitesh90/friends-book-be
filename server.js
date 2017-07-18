@@ -21,7 +21,7 @@ MongoClient.connect(db.url, (err, database) => {
   if (err) return console.log(err)
   require('./app/routes')(app, database);
   app.listen(port, () => {
-    console.log('Wewweee arrre live on ' + port);
+    console.log('We arrre live on ' + port);
 
     /* blogs collection */
     database.createCollection('blogs')

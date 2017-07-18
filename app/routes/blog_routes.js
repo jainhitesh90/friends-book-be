@@ -73,7 +73,7 @@ module.exports = function (app, db) {
     });
 
      /* READ ALL */
-    app.get('/blog/list', (req, res) => {
+    app.get('/blog/list', isAuthenticated, (req, res) => {
         var cursor = db.collection('blogs').find({});
         cursor.toArray(function (err, docs) {
             if (err) {
@@ -85,7 +85,7 @@ module.exports = function (app, db) {
     });
 
     /* READ */
-    app.get('/blog/:id', (req, res) => {
+    app.get('/blog/:id', isAuthenticated,(req, res) => {
         if (req.params.id == null) {
             res.send(errorResponse('Blog id missing'));
         } else {
@@ -102,7 +102,7 @@ module.exports = function (app, db) {
     });
     
     /* Find blogs by category */
-    app.get('/blog/getBlogsByCategory/:category', (req, res) => {
+    app.get('/blog/getBlogsByCategory/:category', isAuthenticated,(req, res) => {
         if (req.params.categoryId == null || req.params.categoryId == '') {
             res.send(errorResponse('Category Id missing'));
         } else {
@@ -120,7 +120,7 @@ module.exports = function (app, db) {
     });
 
     /* Find blogs by keyword */
-    app.get('/blog/search/:keyword', (req, res) => {
+    app.get('/blog/search/:keyword', isAuthenticated,(req, res) => {
         if (req.params.keyword == null || req.params.keyword == '') {
             res.send(errorResponse('Keyword missing'));
         } else {

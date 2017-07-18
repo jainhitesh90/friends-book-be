@@ -8,7 +8,6 @@ module.exports = function (app, db) {
     /* CREATE */
 
     app.post('/category/add', isAuthenticated, function (req, res) {
-        console.log("2")
         if (req.body.category == null || req.body.category == '') {
             res.send(errorResponse('Category missing'));
         } else {
@@ -59,7 +58,7 @@ module.exports = function (app, db) {
     });
 
     /* READ ALL */
-    app.get('/category/list', (req, res) => {
+    app.get('/category/list', isAuthenticated, (req, res) => {
         db.collection('categories').find({}).toArray(function (err, docs) {
             if (err) {
                 res.send(errorResponse(err.errmsg));
