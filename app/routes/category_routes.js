@@ -58,7 +58,7 @@ module.exports = function (app, db) {
     });
 
     /* READ ALL */
-    app.get('/category/list', isAuthenticated, (req, res) => {
+    app.get('/category/list', (req, res) => {
         db.collection('categories').find({}).toArray(function (err, docs) {
             if (err) {
                 res.send(errorResponse(err.errmsg));

@@ -28,7 +28,7 @@ module.exports = function (app, db) {
                 } else if (docs.length > 0) {
                     res.send(successResponse('Welcome back!!', docs[0]))
                 } else {
-                    /* create profile */
+                    /* create profile */ 
                     const userObject = {
                         email: req.body.email,
                         name: req.body.name,
@@ -66,6 +66,17 @@ module.exports = function (app, db) {
                 res.send(successResponse(null, docs))
             }
         });
+    });
+
+    /* USER PROFILE */
+    app.get('/users/profile', (req, res) => {
+        db.collection('users').findOne({authToken : req.get('authToken')}, (function (err, item) {
+            if (err) {
+                res.send(errorResponse(err.errmsg));
+            } else {
+                res.send(successResponse(null, item))
+            }
+        }));
     });
 };
 

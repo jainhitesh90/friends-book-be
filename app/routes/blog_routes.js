@@ -14,6 +14,8 @@ module.exports = function (app, db) {
             res.send(errorResponse('Category Name missing'));
         } else if (req.body.fullUrl == null || req.body.fullUrl == '') {
             res.send(errorResponse('Full URL missing'));
+        } else if (req.body.image == null || req.body.image == '') {
+            res.send(errorResponse('Image URL missing'));
         } else {
             //validate category name first
             var cursor = db.collection('categories').find({
@@ -23,7 +25,7 @@ module.exports = function (app, db) {
                 if (err) { //invalid category name
                     res.send(errorResponse(err.errmsg));
                 } else { //valid category name
-                    const blog = { title: req.body.title, description: req.body.description, category: req.body.category, fullUrl: req.body.fullUrl };
+                    const blog = { title: req.body.title, description: req.body.description, category: req.body.category, fullUrl: req.body.fullUrl, image : req.body.image };
                     db.collection('blogs').insert(blog, (err, result) => {
                         if (err) {
                             res.send(errorResponse(err.errmsg));
@@ -43,7 +45,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            const blog = { title: req.body.title, description: req.body.description, category: req.body.category, fullUrl: req.body.fullUrl };
+            const blog = { title: req.body.title, description: req.body.description, category: req.body.category, fullUrl: req.body.fullUrl, image : req.body.image };
             db.collection('blogs').update(details, blog, (err, result) => {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
@@ -73,7 +75,7 @@ module.exports = function (app, db) {
     });
 
      /* READ ALL */
-    app.get('/blog/list', isAuthenticated, (req, res) => {
+    app.get('/blog/list', (req, res) => {
         var cursor = db.collection('blogs').find({});
         cursor.toArray(function (err, docs) {
             if (err) {
@@ -85,7 +87,7 @@ module.exports = function (app, db) {
     });
 
     /* READ */
-    app.get('/blog/:id', isAuthenticated,(req, res) => {
+    app.get('/blog/:id',(req, res) => {
         if (req.params.id == null) {
             res.send(errorResponse('Blog id missing'));
         } else {
@@ -102,7 +104,7 @@ module.exports = function (app, db) {
     });
     
     /* Find blogs by category */
-    app.get('/blog/getBlogsByCategory/:category', isAuthenticated,(req, res) => {
+    app.get('/blog/getBlogsByCategory/:category',(req, res) => {
         if (req.params.categoryId == null || req.params.categoryId == '') {
             res.send(errorResponse('Category Id missing'));
         } else {
@@ -120,7 +122,7 @@ module.exports = function (app, db) {
     });
 
     /* Find blogs by keyword */
-    app.get('/blog/search/:keyword', isAuthenticated,(req, res) => {
+    app.get('/blog/search/:keyword',(req, res) => {
         if (req.params.keyword == null || req.params.keyword == '') {
             res.send(errorResponse('Keyword missing'));
         } else {
