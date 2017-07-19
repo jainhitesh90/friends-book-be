@@ -25,7 +25,7 @@ module.exports = function (app, db) {
                 if (err) { //invalid category name
                     res.send(errorResponse(err.errmsg));
                 } else { //valid category name
-                    const blog = { title: req.body.title, description: req.body.description, category: req.body.category, fullUrl: req.body.fullUrl, image : req.body.image };
+                    const blog = { title: req.body.title, description: req.body.description, category: req.body.category, fullUrl: req.body.fullUrl, image : req.body.image, likes : 0 };
                     db.collection('blogs').insert(blog, (err, result) => {
                         if (err) {
                             res.send(errorResponse(err.errmsg));
@@ -45,7 +45,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            const blog = { title: req.body.title, description: req.body.description, category: req.body.category, fullUrl: req.body.fullUrl, image : req.body.image };
+            const blog = { title: req.body.title, description: req.body.description, category: req.body.category, fullUrl: req.body.fullUrl, image : req.body.image};
             db.collection('blogs').update(details, blog, (err, result) => {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
@@ -53,6 +53,18 @@ module.exports = function (app, db) {
                     res.send(successResponse('Blog updated successfully', null))
                 }
             });
+        }
+    });
+
+    /* Increment Likes on blog */
+    app.put('/blog/like/:id', isAuthenticated, (req, res) => {
+        if (req.params.id == null) {
+            res.send(errorResponse('Blog id missing'));
+        } else {
+            const id = req.params.id;
+            const details = { '_id': new ObjectID(id) };
+            db.collection('blogs').update(details, {$inc: {likes : 1}})
+            res.send(successResponse('Blog liked', null))
         }
     });
 
