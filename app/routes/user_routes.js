@@ -1,8 +1,10 @@
 module.exports = function (app, db) {
     var ObjectID = require('mongodb').ObjectID;
+    var request = require('request');
 
     /* SIGNUP / LOGIN */
     app.post('/user/signup', (req, res) => {
+        console.log("data : " + req)
         if (req.body.email == null || req.body.email == '') {
             res.send(errorResponse('Email Id missing'));
         } else if (req.body.name == null || req.body.name == '') {
@@ -14,29 +16,17 @@ module.exports = function (app, db) {
         } else if (req.body.uid == null || req.body.uid == '') {
             res.send(errorResponse('UID missing'));
         } else {
-            var cursor = db.collection('users').find({
-                email: req.body.email,
-                name: req.body.name,
-                image: req.body.image,
-                provider: req.body.provider,
-                token: req.body.token,
-                uid: req.body.uid
-            });
+            var userObject = {
+                email: req.body.email, name: req.body.name, image: req.body.image, provider: req.body.provider, token: req.body.token, uid: req.body.uid
+            };
+            var cursor = db.collection('users').find({email: req.body.email, provider: req.body.provider});
             cursor.toArray(function (err, docs) {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
                 } else if (docs.length > 0) {
                     res.send(successResponse('Welcome back!!', docs[0]))
                 } else {
-                    /* create profile */ 
-                    const userObject = {
-                        email: req.body.email,
-                        name: req.body.name,
-                        image: req.body.image,
-                        provider: req.body.provider,
-                        token: req.body.token,
-                        uid: req.body.uid
-                    };
+                    /* create profile */
                     var authToken = getToken(userObject)
                     db.collection('users').insert(userObject, (err, result) => {
                         if (err) {
@@ -48,7 +38,17 @@ module.exports = function (app, db) {
                             else
                                 res.send(errorResponse(err.errmsg))
                         } else {
-                            res.send(successResponse('Profile created!!', result.ops[0]))
+                            /* validate facebook token and id */
+                            if (req.body.provider == 'facebook') {
+                                request("https://graph.facebook.com/me?access_token=" + req.body.token, function (error, response, body) {
+                                    if (!error && response.statusCode == 200 && req.body.uid == JSON.parse(response.body).id)
+                                        res.send(successResponse('Profile created!!', result.ops[0]))
+                                    else
+                                        res.send(errorResponse("Invalid facebook token"))
+                                })
+                            } else {
+                                res.send(successResponse('Profile created!!', result.ops[0]))
+                            }
                         }
                     });
                 }
@@ -70,7 +70,7 @@ module.exports = function (app, db) {
 
     /* USER PROFILE */
     app.get('/users/profile', (req, res) => {
-        db.collection('users').findOne({authToken : req.get('authToken')}, (function (err, item) {
+        db.collection('users').findOne({ authToken: req.get('authToken') }, (function (err, item) {
             if (err) {
                 res.send(errorResponse(err.errmsg));
             } else {
