@@ -18,8 +18,10 @@ module.exports = function (app, db) {
             res.send(errorResponse('Time missing'));
         } else if (req.body.url == null || req.body.url == '') {
             res.send(errorResponse('Url missing'));
-        } else {
-            const event = { title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, createdAt: Date.now(), likes: 0 };
+        } else if (req.body.image == null || req.body.image == '') {
+            res.send(errorResponse('Image URL missing'));
+        }else {
+            const event = { title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, image : req.body.image, createdAt: Date.now(), likes: 0 };
             db.collection('events').insert(event, (err, result) => {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
@@ -37,7 +39,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            const event = { $set: { title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, updatedAt: Date.now()}};
+            const event = { $set: { title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, image : req.body.image, updatedAt: Date.now()}};
             db.collection('events').update(details, event, (err, result) => {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
@@ -163,13 +165,12 @@ function isUserAuthenticated(req, res, next) {
         res.send(errorResponse("Token is not present"));
     else {
         var authToken = req.get('authToken')
-        var cursor = database.collection('users').find({ authToken: authToken });
-        cursor.toArray(function (err, docs) {
-            if (docs.length == 0) {
+        database.collection('users').findOne({ authToken: req.get('authToken') }, (function (err, item) {
+            if (err) {
                 res.send(errorResponse("Token invalid"));
-            } else if (docs.length > 0) {
+            } else {
                 return next();
             }
-        });
+        }));
     }
 }

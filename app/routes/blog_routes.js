@@ -160,13 +160,12 @@ function isUserAuthenticated(req, res, next) {
         res.send(errorResponse("Token is not present"));
     else {
         var authToken = req.get('authToken')
-        var cursor = database.collection('users').find({ authToken: authToken });
-        cursor.toArray(function (err, docs) {
-            if (docs.length == 0) {
+        database.collection('users').findOne({ authToken: req.get('authToken') }, (function (err, item) {
+            if (err) {
                 res.send(errorResponse("Token invalid"));
-            } else if (docs.length > 0) {
+            } else {
                 return next();
             }
-        });
+        }));
     }
 }

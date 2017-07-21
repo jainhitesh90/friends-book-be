@@ -4,7 +4,6 @@ module.exports = function (app, db) {
 
     /* SIGNUP / LOGIN */
     app.post('/user/signup', (req, res) => {
-        console.log("data : " + req)
         if (req.body.email == null || req.body.email == '') {
             res.send(errorResponse('Email Id missing'));
         } else if (req.body.name == null || req.body.name == '') {
@@ -28,7 +27,10 @@ module.exports = function (app, db) {
                 } else {
                     /* create profile */
                     var authToken = getToken(userObject)
-                    db.collection('users').insert(userObject, (err, result) => {
+                    var userObjectWithToken = {
+                        email: req.body.email, name: req.body.name, image: req.body.image, provider: req.body.provider, token: req.body.token, uid: req.body.uid, authToken : authToken 
+                    };
+                    db.collection('users').insert(userObjectWithToken, (err, result) => {
                         if (err) {
                             if (String(err.errmsg).includes('duplicate')) // duplicate email id
                                 if (req.body.provider == 'facebook')
@@ -74,7 +76,7 @@ module.exports = function (app, db) {
             if (err) {
                 res.send(errorResponse(err.errmsg));
             } else {
-                res.send(successResponse(null, item))
+                res.send(successResponse("Yeh le profile", item))
             }
         }));
     });
