@@ -37,7 +37,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            const event = { title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, updatedAt: Date.now()};
+            const event = { $set: { title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, updatedAt: Date.now()}};
             db.collection('events').update(details, event, (err, result) => {
                 if (err) {
                     res.send(errorResponse(err.errmsg));

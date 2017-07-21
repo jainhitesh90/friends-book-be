@@ -33,7 +33,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            const blog = { title: req.body.title, description: req.body.description, fullUrl: req.body.fullUrl, image : req.body.image, updatedAt : Date.now()};
+            const blog = { $set: { title: req.body.title, description: req.body.description, fullUrl: req.body.fullUrl, image : req.body.image, updatedAt : Date.now()}};
             db.collection('blogs').update(details, blog, (err, result) => {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
