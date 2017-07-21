@@ -6,11 +6,11 @@ const app = express();
 
 const port = 8080;
 
-var allowCrossDomain = function(req, res, next) {
-    res.header('Access-Control-Allow-Origin', "*");
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, authToken');
-    next();
+var allowCrossDomain = function (req, res, next) {
+  res.header('Access-Control-Allow-Origin', "*");
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, authToken');
+  next();
 }
 
 app.use(bodyParser.json({ extended: true })); //parsing the body parameters 
@@ -23,20 +23,21 @@ MongoClient.connect(db.url, (err, database) => {
   app.listen(port, () => {
     console.log('We are live on ' + port);
 
+    /* admin collection */
+    database.createCollection('admin')
+    database.collection('admin').ensureIndex({ userName: 1 }, { unique: true });
+
     /* blogs collection */
     database.createCollection('blogs')
-    database.collection('blogs').ensureIndex({ fullUrl : 1 }, { unique: true });
+    database.collection('blogs').ensureIndex({ fullUrl: 1 }, { unique: true });
 
-    /* category collection */
-    database.createCollection('categories')
-    database.collection('categories').ensureIndex({ category : 1 }, { unique: true });
+    /* events collection */
+    database.createCollection('events')
+    database.collection('events').ensureIndex({ fullUrl: 1 }, { unique: true });
 
     /* user collection */
     database.createCollection('users')
-    database.collection('users').ensureIndex({ email : 1 }, { unique: true });
+    database.collection('users').ensureIndex({ email: 1 }, { unique: true });
 
-    /* admin collection */
-    database.createCollection('admin')
-    database.collection('admin').ensureIndex({ userName : 1 }, { unique: true });
   });
 })

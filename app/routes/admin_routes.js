@@ -12,7 +12,7 @@ module.exports = function (app, db) {
             res.send(errorResponse('password missing'));
         } else {
             var authToken = getToken({ userName: req.body.userName, password: req.body.password })
-            const adminObject = { userName: req.body.userName, authToken: authToken };
+            const adminObject = { userName: req.body.userName, authToken: authToken, createdAt : Date.now() };
             db.collection('admin').insert(adminObject, (err, result) => {
                 if (err) {
                     if (String(err.errmsg).includes('duplicate')) // duplicate userName
