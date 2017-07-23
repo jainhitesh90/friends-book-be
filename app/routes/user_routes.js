@@ -84,9 +84,9 @@ module.exports = function (app, db) {
 
 /* get AWT authToken */
 function getToken(userObject) {
-    const db = require('../../config/db');
+    const credentials = require('../../config/credentials');
     var jwt = require('jsonwebtoken');
-    var authToken = jwt.sign(userObject, db.secretKey, {
+    var authToken = jwt.sign(userObject, credentials.secretKey, {
         expiresIn: 365 * 24 * 60  // expires in 1 year
     });
     return authToken;

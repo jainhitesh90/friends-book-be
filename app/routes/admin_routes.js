@@ -1,4 +1,4 @@
-const db = require('../../config/db');
+const db = require('../../config/credentials');
 var jwt = require('jsonwebtoken');
 
 module.exports = function (app, db) {

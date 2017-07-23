@@ -10,7 +10,7 @@ module.exports = function (app, db) {
     app.post('/post/add', [isUserAuthenticated, upload.single('content')], (req, res) => {
         var AWS = require('aws-sdk');
         AWS.config.loadFromPath('./config/aws-config.json');
-        const configFile = require('../../config/db');
+        const configFile = require('../../config/credentials');
         var s3Bucket = new AWS.S3({ params: { Bucket: configFile.s3BucketName } })
         var fs = require('fs');
         var file = req.file;

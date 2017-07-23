@@ -1,7 +1,7 @@
 const express = require('express');
 const MongoClient = require('mongodb').MongoClient;
 const bodyParser = require('body-parser');
-const db = require('./config/db');
+const credentials = require('./config/credentials');
 const app = express();
 
 const port = 8080;
@@ -14,19 +14,11 @@ var allowCrossDomain = function (req, res, next) {
 }
 
 app.use(bodyParser.json({ extended: true })); //parsing the body parameters 
-//app.use(bodyParser.urlencoded({ extended: true })); //for form data
-
-// Add this line below
-//app.use(bodyParser.urlencoded({ extended: false })) 
-
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded());
-// in latest body-parser use like below.
-//app.use(bodyParser.urlencoded({ extended: true }));
-
 app.use(allowCrossDomain);
 
-MongoClient.connect(db.url, (err, database) => {
+MongoClient.connect(credentials.url, (err, database) => {
   if (err) return console.log(err)
   require('./app/routes')(app, database);
   app.listen(port, () => {
