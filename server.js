@@ -9,18 +9,18 @@ const port = 8080;
 var allowCrossDomain = function (req, res, next) {
   res.header('Access-Control-Allow-Origin', "*");
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
-  res.header('Access-Control-Allow-Headers', 'authToken');
+  res.header('Access-Control-Allow-Headers', 'content-type, authToken');
   next();
 }
 
-//app.use(bodyParser.json({ extended: true })); //parsing the body parameters 
+app.use(bodyParser.json({ extended: true })); //parsing the body parameters 
 //app.use(bodyParser.urlencoded({ extended: true })); //for form data
 
 // Add this line below
 //app.use(bodyParser.urlencoded({ extended: false })) 
 
 app.use(bodyParser.json());
-//app.use(bodyParser.urlencoded());
+app.use(bodyParser.urlencoded());
 // in latest body-parser use like below.
 //app.use(bodyParser.urlencoded({ extended: true }));
 
