@@ -120,8 +120,13 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('blogs').update(details, {$inc: {likes : 1}})
-            res.send(successResponse('Blog liked', null))
+            db.collection('blogs').update(details, {$inc: {likes : 1}}, (err, result) => {
+                if (err) {
+                    res.send(errorResponse(err.errmsg));
+                } else {
+                    res.send(successResponse('Blog liked successfully', null))
+                }
+            });
         }
     });
 };

@@ -20,8 +20,8 @@ module.exports = function (app, db) {
             res.send(errorResponse('Url missing'));
         } else if (req.body.image == null || req.body.image == '') {
             res.send(errorResponse('Image URL missing'));
-        }else {
-            const event = { title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, image : req.body.image, createdAt: Date.now(), likes: 0 };
+        } else {
+            const event = { title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, image: req.body.image, createdAt: Date.now(), likes: 0 };
             db.collection('events').insert(event, (err, result) => {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
@@ -39,7 +39,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            const event = { $set: { title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, image : req.body.image, updatedAt: Date.now()}};
+            const event = { $set: { title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, image: req.body.image, updatedAt: Date.now() } };
             db.collection('events').update(details, event, (err, result) => {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
@@ -125,8 +125,13 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('events').update(details, { $inc: { likes: 1 } })
-            res.send(successResponse('Event liked', null))
+            db.collection('events').update(details, { $inc: { likes: 1 } }, (err, result) => {
+                if (err) {
+                    res.send(errorResponse(err.errmsg));
+                } else {
+                    res.send(successResponse('Event liked successfully', null))
+                }
+            });
         }
     });
 };

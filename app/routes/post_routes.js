@@ -1,4 +1,4 @@
-var database = null
+var database = null, user = null
 var multer = require('multer')
 var upload = multer({ dest: 'uploads/' })
 
@@ -28,7 +28,8 @@ module.exports = function (app, db) {
                         if (err) {
                             res.send(errorResponse('Something went wrong!!'))
                         } else {
-                            const post = { contentDescription: req.body.contentDescription, contentUrl: data['Location'], contentType: req.body.contentType, createdAt: Date.now(), likes: 0 };
+                            console.log("contentDescription : " + req.body.contentDescription)
+                            const post = { user : {name : user.name, image : user.image}, contentDescription: req.body.contentDescription, contentUrl: data['Location'], contentType: req.body.contentType, createdAt: Date.now(), likes: 0 };
                             db.collection('posts').insert(post, (err, result) => {
                                 if (err) {
                                     res.send(errorResponse(err.errmsg));
@@ -39,6 +40,90 @@ module.exports = function (app, db) {
                         }
                     });
                 });
+            });
+        }
+    });
+
+    /* UPDATE */
+    app.put('/post/update/:id', isUserAuthenticated, (req, res) => {
+        if (req.params.id == null) {
+            res.send(errorResponse('Post id missing'));
+        } else {
+            console.log("updating post")
+            console.log("contentDescription : " + req.body)
+            const id = req.params.id;
+            const details = { '_id': new ObjectID(id) };
+            const post = { $set: { contentDescription: req.body.contentDescription, updatedAt : Date.now()}};
+            db.collection('posts').update(details, post, (err, result) => {
+                if (err) {
+                    res.send(errorResponse(err.errmsg));
+                } else {
+                    res.send(successResponse('Post updated successfully', null))
+                }
+            });
+        }
+    });
+
+    /* DELETE */
+    app.delete('/post/delete/:id', isUserAuthenticated, (req, res) => {
+        if (req.params.id == null) {
+            res.send(errorResponse('Post id missing'));
+        } else {
+            const id = req.params.id;
+            const details = { '_id': new ObjectID(id) };
+            db.collection('posts').remove(details, (err, item) => {
+                if (err) {
+                    res.send(errorResponse(err.errmsg));
+                } else {
+                    res.send(successResponse('Post deleted successfully', null))
+                }
+            });
+        }
+
+    });
+
+     /* READ ALL */
+    app.get('/post/list', (req, res) => {
+        var cursor = db.collection('posts').find({});
+        cursor.toArray(function (err, docs) {
+            if (err) {
+                res.send(errorResponse(err.errmsg));
+            } else {
+                res.send(successResponse(null, docs))
+            }
+        });
+    });
+
+    /* READ */
+    app.get('/post/:id',(req, res) => {
+        if (req.params.id == null) {
+            res.send(errorResponse('Post id missing'));
+        } else {
+            const id = req.params.id;
+            const details = { '_id': new ObjectID(id) };
+            db.collection('posts').findOne(details, (err, item) => {
+                if (err) {
+                    res.send(errorResponse(err.errmsg));
+                } else {
+                    res.send(successResponse(null, item))
+                }
+            });
+        }
+    });
+    
+    /* Increment Likes on post */
+    app.put('/post/like/:id', isUserAuthenticated, (req, res) => {
+        if (req.params.id == null) {
+            res.send(errorResponse('Post id missing'));
+        } else {
+            const id = req.params.id;
+            const details = { '_id': new ObjectID(id) };
+            db.collection('posts').update(details, {$inc: {likes : 1}}, (err, result) => {
+                if (err) {
+                    res.send(errorResponse(err.errmsg));
+                } else {
+                    res.send(successResponse('Post liked successfully', null))
+                }
             });
         }
     });
