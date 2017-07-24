@@ -15,7 +15,7 @@ module.exports = function (app, db) {
         } else if (req.body.image == null || req.body.image == '') {
             res.send(errorResponse('Image URL missing'));
         } else {
-            const blog = { title: req.body.title, description: req.body.description, fullUrl: req.body.fullUrl, image : req.body.image, createdAt : Date.now(), likes : 0 };
+            const blog = { title: req.body.title, description: req.body.description, fullUrl: req.body.fullUrl, image : req.body.image, createdAt : Date.now() };
                     db.collection('blogs').insert(blog, (err, result) => {
                         if (err) {
                             res.send(errorResponse(err.errmsg));
@@ -120,7 +120,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('blogs').update(details, {"$pushAll" : { arr : [user.userId]}}, (err, result) => {
+            db.collection('blogs').update(details, {"$pushAll" : { likess : [userId]}}, (err, result) => {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
                 } else {
@@ -169,7 +169,7 @@ function isUserAuthenticated(req, res, next) {
             if (err) {
                 res.send(errorResponse("Token invalid"));
             } else if (item!=null) {
-                user = item
+                userId = item._id
                 return next();
             } else {
                 res.send(errorResponse("Token Invalid"));
