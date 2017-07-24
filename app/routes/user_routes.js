@@ -31,11 +31,11 @@ module.exports = function (app, db) {
                     var authToken = getToken(userObject)
                     /* get user's incremented id */
                     database.collection("counters").findAndModify(
-                        { _id: "userId" }, [], { $inc: { sequence_value: 1 } }, { new: true },    // query
+                        { _id: "userId" }, [], { $inc: { lastUserId: 1 } }, { new: true },    // query
                         function (err, doc) {
                             if (!err) {
                                 /* create profile */
-                                db.collection('users').insert({ _id: doc.value.sequence_value, email: req.body.email, name: req.body.name, image: req.body.image, provider: req.body.provider, token: req.body.token, uid: req.body.uid, authToken: authToken }, (err, result) => {
+                                db.collection('users').insert({ _id: doc.value.lastUserId, email: req.body.email, name: req.body.name, image: req.body.image, provider: req.body.provider, token: req.body.token, uid: req.body.uid, authToken: authToken }, (err, result) => {
                                     if (err) {
                                         if (String(err.errmsg).includes('duplicate')) // duplicate email id
                                             if (req.body.provider == 'facebook')

@@ -22,14 +22,14 @@ MongoClient.connect(credentials.url, (err, database) => {
   if (err) return console.log(err)
   require('./app/routes')(app, database);
   app.listen(port, () => {
-    console.log('Weee are live on ' + port);
+    console.log('We are live on ' + port);
 
     /* admin collection */
     database.createCollection('admin')
     database.collection('admin').ensureIndex({ userName: 1 }, { unique: true });
 
     database.createCollection('counters')
-    database.collection('counters').insert({_id:"userId",sequence_value:0})
+    database.collection('counters').insert({_id:"userId", lastUserId:0})
 
     /* user collection */
     database.createCollection('users')

@@ -1,4 +1,4 @@
-var database = null, user = null
+var database = null, userId = null
 var multer = require('multer')
 var upload = multer({ dest: 'uploads/' })
 
@@ -28,8 +28,7 @@ module.exports = function (app, db) {
                         if (err) {
                             res.send(errorResponse('Something went wrong!!'))
                         } else {
-                            console.log("contentDescription : " + req.body.contentDescription)
-                            const post = { user : {name : user.name, image : user.image}, contentDescription: req.body.contentDescription, contentUrl: data['Location'], contentType: req.body.contentType, createdAt: Date.now(), likes: 0 };
+                            const post = { userId: userId, contentDescription: req.body.contentDescription, contentUrl: data['Location'], contentType: req.body.contentType, createdAt: Date.now(), likes: 0 };
                             db.collection('posts').insert(post, (err, result) => {
                                 if (err) {
                                     res.send(errorResponse(err.errmsg));
@@ -49,10 +48,9 @@ module.exports = function (app, db) {
         if (req.params.id == null) {
             res.send(errorResponse('Post id missing'));
         } else {
-            console.log("updating post")
-            console.log("contentDescription : " + req.body)
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
+            console.log("updated content recd : " + req.body.contentDescription)
             const post = { $set: { contentDescription: req.body.contentDescription, updatedAt : Date.now()}};
             db.collection('posts').update(details, post, (err, result) => {
                 if (err) {
@@ -82,7 +80,7 @@ module.exports = function (app, db) {
 
     });
 
-     /* READ ALL */
+    /* READ ALL */
     app.get('/post/list', (req, res) => {
         var cursor = db.collection('posts').find({});
         cursor.toArray(function (err, docs) {
@@ -95,7 +93,7 @@ module.exports = function (app, db) {
     });
 
     /* READ */
-    app.get('/post/:id',(req, res) => {
+    app.get('/post/:id', (req, res) => {
         if (req.params.id == null) {
             res.send(errorResponse('Post id missing'));
         } else {
@@ -110,7 +108,7 @@ module.exports = function (app, db) {
             });
         }
     });
-    
+
     /* Increment Likes on post */
     app.put('/post/like/:id', isUserAuthenticated, (req, res) => {
         if (req.params.id == null) {
@@ -118,7 +116,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('posts').update(details, {$inc: {likes : 1}}, (err, result) => {
+            db.collection('posts').update(details, { $inc: { likes: 1 } }, (err, result) => {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
                 } else {
@@ -136,8 +134,8 @@ function isUserAuthenticated(req, res, next) {
         database.collection('users').findOne({ authToken: req.get('authToken') }, (function (err, item) {
             if (err) {
                 res.send(errorResponse("Token invalid"));
-            } else if (item!=null) {
-                user = item
+            } else if (item != null) {
+                userId = item._id
                 return next();
             } else {
                 res.send(errorResponse("Token Invalid"));
