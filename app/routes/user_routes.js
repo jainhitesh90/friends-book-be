@@ -1,4 +1,7 @@
+var database = null, newUserId;
+
 module.exports = function (app, db) {
+    database = db;
     var ObjectID = require('mongodb').ObjectID;
     var request = require('request');
 
@@ -18,41 +21,48 @@ module.exports = function (app, db) {
             var userObject = {
                 email: req.body.email, name: req.body.name, image: req.body.image, provider: req.body.provider, token: req.body.token, uid: req.body.uid
             };
-            var cursor = db.collection('users').find({email: req.body.email, provider: req.body.provider});
+            var cursor = db.collection('users').find({ email: req.body.email, provider: req.body.provider });
             cursor.toArray(function (err, docs) {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
                 } else if (docs.length > 0) {
                     res.send(successResponse('Welcome back!!', docs[0]))
                 } else {
-                    /* create profile */
                     var authToken = getToken(userObject)
-                    var userObjectWithToken = {
-                        email: req.body.email, name: req.body.name, image: req.body.image, provider: req.body.provider, token: req.body.token, uid: req.body.uid, authToken : authToken 
-                    };
-                    db.collection('users').insert(userObjectWithToken, (err, result) => {
-                        if (err) {
-                            if (String(err.errmsg).includes('duplicate')) // duplicate email id
-                                if (req.body.provider == 'facebook')
-                                    res.send(errorResponse("Please login via gmail, you've registered using your gmail account"));
-                                else
-                                    res.send(errorResponse("Please login via facebook, you've registered using your facebook account"));
-                            else
-                                res.send(errorResponse(err.errmsg))
-                        } else {
-                            /* validate facebook token and id */
-                            if (req.body.provider == 'facebook') {
-                                request("https://graph.facebook.com/me?access_token=" + req.body.token, function (error, response, body) {
-                                    if (!error && response.statusCode == 200 && req.body.uid == JSON.parse(response.body).id)
-                                        res.send(successResponse('Profile created!!', result.ops[0]))
-                                    else
-                                        res.send(errorResponse("Invalid facebook token"))
-                                })
+                    /* get user's incremented id */
+                    database.collection("counters").findAndModify(
+                        { _id: "userId" }, [], { $inc: { sequence_value: 1 } }, { new: true },    // query
+                        function (err, doc) {
+                            if (!err) {
+                                /* create profile */
+                                db.collection('users').insert({ _id: doc.value.sequence_value, email: req.body.email, name: req.body.name, image: req.body.image, provider: req.body.provider, token: req.body.token, uid: req.body.uid, authToken: authToken }, (err, result) => {
+                                    if (err) {
+                                        if (String(err.errmsg).includes('duplicate')) // duplicate email id
+                                            if (req.body.provider == 'facebook')
+                                                res.send(errorResponse("Please login via gmail, you've registered using your gmail account"));
+                                            else
+                                                res.send(errorResponse("Please login via facebook, you've registered using your facebook account"));
+                                        else
+                                            res.send(errorResponse(err.errmsg))
+                                    } else {
+                                        /* validate facebook token and id */
+                                        if (req.body.provider == 'facebook') {
+                                            request("https://graph.facebook.com/me?access_token=" + req.body.token, function (error, response, body) {
+                                                if (!error && response.statusCode == 200 && req.body.uid == JSON.parse(response.body).id)
+                                                    res.send(successResponse('Profile created!!', result.ops[0]))
+                                                else
+                                                    res.send(errorResponse("Invalid facebook token"))
+                                            })
+                                        } else {
+                                            res.send(successResponse('Profile created!!', result.ops[0]))
+                                        }
+                                    }
+                                });
                             } else {
-                                res.send(successResponse('Profile created!!', result.ops[0]))
+                                res.errorResponse("Unable to generate user id")
                             }
                         }
-                    });
+                    );
                 }
             });
         }

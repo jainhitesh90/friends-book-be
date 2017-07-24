@@ -1,4 +1,4 @@
-var database = null
+var database = null, user = null
 
 module.exports = function (app, db) {
     database = db
@@ -120,7 +120,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('blogs').update(details, {$inc: {likes : 1}}, (err, result) => {
+            db.collection('blogs').update(details, {"$pushAll" : { arr : [user.userId]}}, (err, result) => {
                 if (err) {
                     res.send(errorResponse(err.errmsg));
                 } else {
@@ -168,8 +168,11 @@ function isUserAuthenticated(req, res, next) {
         database.collection('users').findOne({ authToken: req.get('authToken') }, (function (err, item) {
             if (err) {
                 res.send(errorResponse("Token invalid"));
-            } else {
+            } else if (item!=null) {
+                user = item
                 return next();
+            } else {
+                res.send(errorResponse("Token Invalid"));
             }
         }));
     }

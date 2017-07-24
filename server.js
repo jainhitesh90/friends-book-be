@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 const credentials = require('./config/credentials');
 const app = express();
 
-const port = 8080;
+const port = 8888;
 
 var allowCrossDomain = function (req, res, next) {
   res.header('Access-Control-Allow-Origin', "*");
@@ -22,11 +22,18 @@ MongoClient.connect(credentials.url, (err, database) => {
   if (err) return console.log(err)
   require('./app/routes')(app, database);
   app.listen(port, () => {
-    console.log('We are live on ' + port);
+    console.log('Weee are live on ' + port);
 
     /* admin collection */
     database.createCollection('admin')
     database.collection('admin').ensureIndex({ userName: 1 }, { unique: true });
+
+    database.createCollection('counters')
+    database.collection('counters').insert({_id:"userId",sequence_value:0})
+
+    /* user collection */
+    database.createCollection('users')
+    database.collection('users').ensureIndex({ email: 1 }, { unique: true });
 
     /* blogs collection */
     database.createCollection('blogs')
@@ -39,10 +46,6 @@ MongoClient.connect(credentials.url, (err, database) => {
     /* posts collection */
     database.createCollection('posts')
     //database.collection('posts').ensureIndex({ fullUrl: 1 }, { unique: true });
-
-    /* user collection */
-    database.createCollection('users')
-    database.collection('users').ensureIndex({ email: 1 }, { unique: true });
-
+    
   });
 })

@@ -156,7 +156,9 @@ function isAuthenticated(req, res, next) {
         var authToken = req.get('authToken')
         var cursor = database.collection('admin').find({ authToken: authToken });
         cursor.toArray(function (err, docs) {
-            if (docs.length == 0) {
+            if (err) {
+                res.send(errorResponse("Token invalid"));
+            } else if (docs.length == 0) {
                 res.send(errorResponse("Token invalid"));
             } else if (docs.length > 0) {
                 return next();
