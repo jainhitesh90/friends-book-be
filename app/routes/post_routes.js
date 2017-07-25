@@ -20,7 +20,7 @@ module.exports = function (app, db) {
             fs.readFile(file.path, function (err, data) {
                 if (err) throw err; // Something went wrong!
                 s3Bucket.createBucket(function () {
-                    var params = { Key: file.filename, Body: data };
+                    var params = { Key: file.filename, Body: data, ContentType: 'image/png' , ACL: 'public-read' };
                     s3Bucket.upload(params, function (err, data) {
                         fs.unlink(file.path, function (err) {
                             if (err) { console.error(err); }
@@ -28,7 +28,8 @@ module.exports = function (app, db) {
                         if (err) {
                             res.send(errorResponse('Something went wrong!!'))
                         } else {
-                            const post = { userId: userId, contentDescription: req.body.contentDescription, contentUrl: data['Location'], contentType: req.body.contentType, createdAt: Date.now(), likes: 0 };
+                            var url = data['Location']+ '/' + file.originalname
+                            const post = { userId: userId, contentDescription: req.body.contentDescription, contentUrl: url, contentType: req.body.contentType, createdAt: Date.now(), likes: 0 };
                             db.collection('posts').insert(post, (err, result) => {
                                 if (err) {
                                     res.send(errorResponse(err.errmsg));
