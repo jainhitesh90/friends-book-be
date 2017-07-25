@@ -1,26 +1,26 @@
-const db = require('../../config/credentials');
-var jwt = require('jsonwebtoken');
+const utils = require('../../utils/utils.js')
 
 module.exports = function (app, db) {
+    utils.setdatabase(db)
     var ObjectID = require('mongodb').ObjectID;
 
     /* Admin signup */
     app.post('/admin/signup', (req, res) => {
         if (req.body.userName == null || req.body.userName == '') {
-            res.send(errorResponse('user name missing'));
+            res.send(utils.errorResponse('user name missing'));
         } else if (req.body.password == null || req.body.password == '') {
-            res.send(errorResponse('password missing'));
+            res.send(utils.errorResponse('password missing'));
         } else {
-            var authToken = getToken({ userName: req.body.userName, password: req.body.password })
+            var authToken = utils.getToken({ userName: req.body.userName, password: req.body.password })
             const adminObject = { userName: req.body.userName, authToken: authToken, createdAt : Date.now() };
             db.collection('admin').insert(adminObject, (err, result) => {
                 if (err) {
                     if (String(err.errmsg).includes('duplicate')) // duplicate userName
-                        res.send(errorResponse("Username already exist"));
+                        res.send(utils.errorResponse("Username already exist"));
                     else
-                        res.send(errorResponse(err.errmsg));
+                        res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    res.send(successResponse("Admin created successfully", result.ops[0]))
+                    res.send(utils.successResponse("Admin created successfully", result.ops[0]))
                 }
             });
         }
@@ -29,57 +29,29 @@ module.exports = function (app, db) {
     /* Admin login*/
     app.post('/admin/login', (req, res) => {
         if (req.body.userName == null || req.body.userName == '') {
-            res.send(errorResponse('user name missing'));
+            res.send(utils.errorResponse('user name missing'));
         } else if (req.body.password == null || req.body.password == '') {
-            res.send(errorResponse('password missing'));
+            res.send(utils.errorResponse('password missing'));
         } else {
             const adminObject = { userName: req.body.userName };
             var cursor = db.collection('admin').find(adminObject);
             cursor.toArray(function (err, docs) {
                 if (err) {
-                    res.send(errorResponse(err.errmsg));
+                    res.send(utils.errorResponse(err.errmsg));
                 } else if (docs.length == 0) {
-                    res.send(errorResponse("Username not found"));
+                    res.send(utils.errorResponse("Username not found"));
                 } else {
-                    var decryptedPassword = decryptPassword(docs[0].authToken)
+                    var decryptedPassword = utils.decryptPassword(docs[0].authToken)
                     if (decryptedPassword != null) {
                         if (req.body.password == decryptedPassword)
-                            res.send(successResponse('Welcome Admin!! ', docs[0]))
+                            res.send(utils.successResponse('Welcome Admin!! ', docs[0]))
                         else
-                            res.send(errorResponse("Invalid password"));
+                            res.send(utils.errorResponse("Invalid password"));
                     } else {
-                        res.send(errorResponse("Invalid secret key"));
+                        res.send(utils.errorResponse("Invalid secret key"));
                     }
                 }
             });
         }
     });
 };
-
-/* encode userObject */
-function getToken(userObject) {
-    return jwt.sign(userObject, db.secretKey, { expiresIn: 365 * 24 * 60 });
-}
-
-/* decode authToken */
-function decryptPassword(token) {
-    var decryptedAdminObject = jwt.verify(token, db.secretKey)
-    if (decryptedAdminObject != null) {
-        return decryptedAdminObject.password
-    } else {
-         return null
-    }
-}
-
-function errorResponse(errorMsg) {
-    return { success: false, error: errorMsg }
-}
-
-function successResponse(message, data) {
-    if (data != null && message != null)
-        return { success: true, message: message, data: data }
-    else if (data != null)
-        return { success: true, data: data }
-    if (message != null)
-        return { success: true, message: message }
-}

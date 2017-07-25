@@ -1,13 +1,13 @@
-var database = null, userId = null
+const utils = require('../../utils/utils.js')
 var multer = require('multer')
 var upload = multer({ dest: 'uploads/' })
 
 module.exports = function (app, db) {
-    database = db
+    utils.setdatabase(db)
     var ObjectID = require('mongodb').ObjectID;
 
     /* CREATE */
-    app.post('/post/add', [isUserAuthenticated, upload.single('content')], (req, res) => {
+    app.post('/post/add', [utils.isUserAuthenticated, upload.single('content')], (req, res) => {
         var AWS = require('aws-sdk');
         AWS.config.loadFromPath('./config/aws-config.json');
         const configFile = require('../../config/credentials');
@@ -15,7 +15,7 @@ module.exports = function (app, db) {
         var fs = require('fs');
         var file = req.file;
         if (file == null || file.path == null) {
-            res.send(errorResponse('File missing'))
+            res.send(utils.errorResponse('File missing'))
         } else {
             fs.readFile(file.path, function (err, data) {
                 if (err) throw err; // Something went wrong!
@@ -26,15 +26,15 @@ module.exports = function (app, db) {
                             if (err) { console.error(err); }
                         });
                         if (err) {
-                            res.send(errorResponse('Something went wrong!!'))
+                            res.send(utils.errorResponse('Something went wrong!!'))
                         } else {
                             var url = data['Location']+ '/' + file.originalname
                             const post = { userId: userId, contentDescription: req.body.contentDescription, contentUrl: url, contentType: req.body.contentType, createdAt: Date.now(), likes: 0 };
                             db.collection('posts').insert(post, (err, result) => {
                                 if (err) {
-                                    res.send(errorResponse(err.errmsg));
+                                    res.send(utils.errorResponse(err.errmsg));
                                 } else {
-                                    res.send(successResponse("Posted successfully", result.ops[0]))
+                                    res.send(utils.successResponse("Posted successfully", result.ops[0]))
                                 }
                             });
                         }
@@ -45,9 +45,9 @@ module.exports = function (app, db) {
     });
 
     /* UPDATE */
-    app.put('/post/update/:id', isUserAuthenticated, (req, res) => {
+    app.put('/post/update/:id', utils.isUserAuthenticated, (req, res) => {
         if (req.params.id == null) {
-            res.send(errorResponse('Post id missing'));
+            res.send(utils.errorResponse('Post id missing'));
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
@@ -55,105 +55,149 @@ module.exports = function (app, db) {
             const post = { $set: { contentDescription: req.body.contentDescription, updatedAt : Date.now()}};
             db.collection('posts').update(details, post, (err, result) => {
                 if (err) {
-                    res.send(errorResponse(err.errmsg));
+                    res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    res.send(successResponse('Post updated successfully', null))
+                    res.send(utils.successResponse('Post updated successfully', null))
                 }
             });
         }
     });
 
     /* DELETE */
-    app.delete('/post/delete/:id', isUserAuthenticated, (req, res) => {
+    app.delete('/post/delete/:id', utils.isUserAuthenticated, (req, res) => {
         if (req.params.id == null) {
-            res.send(errorResponse('Post id missing'));
+            res.send(utils.errorResponse('Post id missing'));
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
             db.collection('posts').remove(details, (err, item) => {
                 if (err) {
-                    res.send(errorResponse(err.errmsg));
+                    res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    res.send(successResponse('Post deleted successfully', null))
+                    res.send(utils.successResponse('Post deleted successfully', null))
                 }
             });
         }
 
     });
 
+     /* Find post by keyword */
+    app.get('/posts/search/:keyword', (req, res) => {
+        if (req.params.keyword == null || req.params.keyword == '') {
+            res.send(utils.errorResponse('Keyword missing'));
+        } else {
+            var cursor = db.collection('posts').find({
+                $or: [
+                    { contentDescription: { $regex: ".*" + req.params.keyword + ".*", '$options': 'i' } }
+                ]
+            });
+            cursor.toArray(function (err, docs) {
+                if (err) {
+                    res.send(utils.errorResponse(err.errmsg));
+                } else {
+                    res.send(utils.successResponse(null, docs))
+                }
+            });
+        }
+    });
+
     /* READ ALL */
-    app.get('/post/list', (req, res) => {
+    app.get('/post/list', utils.isUserAuthenticated,  (req, res) => {
         var cursor = db.collection('posts').find({});
         cursor.toArray(function (err, docs) {
             if (err) {
-                res.send(errorResponse(err.errmsg));
+                res.send(utils.errorResponse(err.errmsg));
             } else {
-                res.send(successResponse(null, docs))
+                var postsLength = docs.length
+                if (postsLength > 0) {
+                    for (i = 0; i < postsLength; i++) {
+                        /* Coutng total likes */
+                        docs[i].likesCount = 0 
+                        if (docs[i].likes != null && docs[i].likes.length > 0) {
+                            docs[i].likesCount = docs[i].likes.length
+                            if (docs[i].likes.indexOf(userId) != -1) {
+                                docs[i].hasLiked = true
+                            }
+                        }
+                        /* Coutng total comments */
+                        docs[i].commentsCount = 0 
+                        if (docs[i].comments != null && docs[i].comments.length > 0) {
+                            docs[i].commentsCount = docs[i].comments.length
+                        }
+                    }
+                }
+                res.send(utils.successResponse(null, docs))
             }
         });
     });
 
+    /* Like a Post */
+    app.put('/post/like/:id', utils.isUserAuthenticated, (req, res) => {
+        if (req.params.id == null) {
+            res.send(utils.errorResponse('Post id missing'));
+        } else {
+            const id = req.params.id;
+            const details = { '_id': new ObjectID(id) };
+            db.collection('posts').update(details, { "$push": { likes: userId } }, (err, result) => {
+                if (err) {
+                    res.send(utils.errorResponse(err.errmsg));
+                } else {
+                    res.send(utils.successResponse('Post liked successfully', null))
+                }
+            });
+        }
+    });
+
+    /* Dislike a Post */
+    app.put('/post/unlike/:id', utils.isUserAuthenticated, (req, res) => {
+        if (req.params.id == null) {
+            res.send(utils.errorResponse('Post id missing'));
+        } else {
+            const id = req.params.id;
+            const details = { '_id': new ObjectID(id) };
+            db.collection('posts').update(details, { "$pull": { likes: userId } }, (err, result) => {
+                if (err) {
+                    res.send(utils.errorResponse(err.errmsg));
+                } else {
+                    res.send(utils.successResponse('Post like removed successfully', null))
+                }
+            });
+        }
+    });
+
+    /* Comment on a Post */
+    app.put('/post/comment/:id', utils.isUserAuthenticated, (req, res) => {
+        if (req.params.id == null) {
+            res.send(utils.errorResponse('Post id missing'));
+        } else if (req.body.newComment == null || req.body.newComment == '') {
+            res.send(utils.errorResponse('Comment missing'));
+        } else {
+            const id = req.params.id;
+            const details = { '_id': new ObjectID(id) };
+            db.collection('posts').update(details, { "$push" : { comments : { userId : userId, comment : req.body.newComment } } }, (err, result) => {
+                if (err) {
+                    res.send(utils.errorResponse(err.errmsg));
+                } else {
+                    res.send(utils.successResponse('Commented successfully on post', null))
+                }
+            });
+        }
+    });
+
     /* READ */
-    app.get('/post/:id', (req, res) => {
-        if (req.params.id == null) {
-            res.send(errorResponse('Post id missing'));
-        } else {
-            const id = req.params.id;
-            const details = { '_id': new ObjectID(id) };
-            db.collection('posts').findOne(details, (err, item) => {
-                if (err) {
-                    res.send(errorResponse(err.errmsg));
-                } else {
-                    res.send(successResponse(null, item))
-                }
-            });
-        }
-    });
-
-    /* Increment Likes on post */
-    app.put('/post/like/:id', isUserAuthenticated, (req, res) => {
-        if (req.params.id == null) {
-            res.send(errorResponse('Post id missing'));
-        } else {
-            const id = req.params.id;
-            const details = { '_id': new ObjectID(id) };
-            db.collection('posts').update(details, { $inc: { likes: 1 } }, (err, result) => {
-                if (err) {
-                    res.send(errorResponse(err.errmsg));
-                } else {
-                    res.send(successResponse('Post liked successfully', null))
-                }
-            });
-        }
-    });
+    // app.get('/post/:id', (req, res) => {
+    //     if (req.params.id == null) {
+    //         res.send(utils.errorResponse('Post id missing'));
+    //     } else {
+    //         const id = req.params.id;
+    //         const details = { '_id': new ObjectID(id) };
+    //         db.collection('posts').findOne(details, (err, item) => {
+    //             if (err) {
+    //                 res.send(utils.errorResponse(err.errmsg));
+    //             } else {
+    //                 res.send(utils.successResponse(null, item))
+    //             }
+    //         });
+    //     }
+    // });
 };
-
-function isUserAuthenticated(req, res, next) {
-    if (req.get('authToken') == null)
-        res.send(errorResponse("Token is not present"));
-    else {
-        database.collection('users').findOne({ authToken: req.get('authToken') }, (function (err, item) {
-            if (err) {
-                res.send(errorResponse("Token invalid"));
-            } else if (item != null) {
-                userId = item._id
-                return next();
-            } else {
-                res.send(errorResponse("Token Invalid"));
-            }
-        }));
-    }
-}
-
-function errorResponse(errorMsg) {
-    return { success: false, error: errorMsg }
-}
-
-function successResponse(message, data) {
-    if (data != null && message != null)
-        return { success: true, message: message, data: data }
-    else if (data != null)
-        return { success: true, data: data }
-    if (message != null)
-        return { success: true, message: message }
-}
