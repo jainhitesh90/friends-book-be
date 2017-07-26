@@ -14,7 +14,9 @@ module.exports = function (app, db) {
         var s3Bucket = new AWS.S3({ params: { Bucket: configFile.s3BucketName } })
         var fs = require('fs');
         var file = req.file;
-        if (file == null || file.path == null) {
+        if (req.body.contentDescription == null || req.body.contentDescription == '') {
+            res.send(utils.errorResponse('Please add some description'))
+        } else if (file == null || file.path == null) {
             res.send(utils.errorResponse('File missing'))
         } else {
             fs.readFile(file.path, function (err, data) {
@@ -28,8 +30,7 @@ module.exports = function (app, db) {
                         if (err) {
                             res.send(utils.errorResponse('Something went wrong!!'))
                         } else {
-                            var url = data['Location']+ '/' + file.originalname
-                            const post = { userId: userId, contentDescription: req.body.contentDescription, contentUrl: url, contentType: req.body.contentType, createdAt: Date.now(), likes: 0 };
+                            const post = { userId: userId, contentDescription: req.body.contentDescription, contentUrl: data['Location'], createdAt: Date.now() };
                             db.collection('posts').insert(post, (err, result) => {
                                 if (err) {
                                     res.send(utils.errorResponse(err.errmsg));
@@ -48,10 +49,11 @@ module.exports = function (app, db) {
     app.put('/post/update/:id', utils.isUserAuthenticated, (req, res) => {
         if (req.params.id == null) {
             res.send(utils.errorResponse('Post id missing'));
+        } else if (req.body.contentDescription == null || req.body.contentDescription == '') {
+            res.send(utils.errorResponse('Please add some description'))
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            console.log("updated content recd : " + req.body.contentDescription)
             const post = { $set: { contentDescription: req.body.contentDescription, updatedAt : Date.now()}};
             db.collection('posts').update(details, post, (err, result) => {
                 if (err) {

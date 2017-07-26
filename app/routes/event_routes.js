@@ -21,7 +21,7 @@ module.exports = function (app, db) {
         } else if (req.body.image == null || req.body.image == '') {
             res.send(utils.errorResponse('Image URL missing'));
         } else {
-            const event = { title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, image: req.body.image, createdAt: Date.now(), likes: 0 };
+            const event = { title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, image: req.body.image, createdAt: Date.now()};
             db.collection('events').insert(event, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));

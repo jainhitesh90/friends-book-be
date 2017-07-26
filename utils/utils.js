@@ -61,14 +61,14 @@ module.exports = {
     /* encode userObject */
     getToken: function (userObject) {
         var jwt = require('jsonwebtoken');
-        const credentials = require('../../config/credentials');
+        const credentials = require('../config/credentials');
         return jwt.sign(userObject, credentials.secretKey, { expiresIn: 365 * 24 * 60 });
     },
 
     /* decode authToken */
     decryptPassword: function (token) {
         var jwt = require('jsonwebtoken');
-        const credentials = require('../../config/credentials');
+        const credentials = require('../config/credentials');
         var decryptedAdminObject = jwt.verify(token, credentials.secretKey)
         if (decryptedAdminObject != null) {
             return decryptedAdminObject.password
