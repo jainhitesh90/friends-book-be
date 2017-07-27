@@ -201,7 +201,6 @@ module.exports = function (app, db) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
                     var commentArrayLength = item['comments'].length
-                    var likesArrayLength = item['likes'].length
                     for (i = 0; i < commentArrayLength; i++) {
                         commentText.push(item['comments'][i].comment)
                         db.collection('users').aggregate([{
@@ -225,6 +224,8 @@ module.exports = function (app, db) {
                             }
                         });
                     }
+
+                    var likesArrayLength = item['likes'].length
                     for (i = 0; i < likesArrayLength; i++) {
                         db.collection('users').aggregate([{
                             $lookup: {
