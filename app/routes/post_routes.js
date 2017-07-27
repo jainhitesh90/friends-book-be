@@ -22,7 +22,7 @@ module.exports = function (app, db) {
             fs.readFile(file.path, function (err, data) {
                 if (err) throw err; // Something went wrong!
                 s3Bucket.createBucket(function () {
-                    var params = { Key: file.filename, Body: data, ContentType: 'image/png' , ACL: 'public-read' };
+                    var params = { Key: file.filename, Body: data, ContentType: 'image/png', ACL: 'public-read' };
                     s3Bucket.upload(params, function (err, data) {
                         fs.unlink(file.path, function (err) {
                             if (err) { console.error(err); }
@@ -54,7 +54,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            const post = { $set: { contentDescription: req.body.contentDescription, updatedAt : Date.now()}};
+            const post = { $set: { contentDescription: req.body.contentDescription, updatedAt: Date.now() } };
             db.collection('posts').update(details, post, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
@@ -83,7 +83,7 @@ module.exports = function (app, db) {
 
     });
 
-     /* Find post by keyword */
+    /* Find post by keyword */
     app.get('/posts/search/:keyword', (req, res) => {
         if (req.params.keyword == null || req.params.keyword == '') {
             res.send(utils.errorResponse('Keyword missing'));
@@ -104,7 +104,7 @@ module.exports = function (app, db) {
     });
 
     /* READ ALL */
-    app.get('/post/list', utils.isUserAuthenticated,  (req, res) => {
+    app.get('/post/list', utils.isUserAuthenticated, (req, res) => {
         var cursor = db.collection('posts').find({});
         cursor.toArray(function (err, docs) {
             if (err) {
@@ -114,7 +114,7 @@ module.exports = function (app, db) {
                 if (postsLength > 0) {
                     for (i = 0; i < postsLength; i++) {
                         /* Coutng total likes */
-                        docs[i].likesCount = 0 
+                        docs[i].likesCount = 0
                         if (docs[i].likes != null && docs[i].likes.length > 0) {
                             docs[i].likesCount = docs[i].likes.length
                             if (docs[i].likes.indexOf(userId) != -1) {
@@ -122,7 +122,7 @@ module.exports = function (app, db) {
                             }
                         }
                         /* Coutng total comments */
-                        docs[i].commentsCount = 0 
+                        docs[i].commentsCount = 0
                         if (docs[i].comments != null && docs[i].comments.length > 0) {
                             docs[i].commentsCount = docs[i].comments.length
                         }
@@ -176,11 +176,73 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('posts').update(details, { "$push" : { comments : { userId : userId, comment : req.body.newComment } } }, (err, result) => {
+            db.collection('posts').update(details, { "$push": { comments: { userId: userId, comment: req.body.newComment } } }, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
                     res.send(utils.successResponse('Commented successfully on post', null))
+                }
+            });
+        }
+    });
+
+    /* Likes and Comments on post */
+    app.get('/post/details/:id', (req, res) => {
+        var combinedResults = {}
+        var commentsList = [], likesList = [], commentText = []
+        var count = 0
+        if (req.params.id == null) {
+            res.send(utils.errorResponse('Post id missing'));
+        } else {
+            const id = req.params.id;
+            const details = { '_id': new ObjectID(id) };
+            db.collection('posts').findOne(details, (err, item) => {
+                if (err) {
+                    res.send(utils.errorResponse(err.errmsg));
+                } else {
+                    var commentArrayLength = item['comments'].length
+                    var likesArrayLength = item['likes'].length
+                    for (i = 0; i < commentArrayLength; i++) {
+                        commentText.push(item['comments'][i].comment)
+                        db.collection('users').aggregate([{
+                            $lookup: {
+                                from: item['comments'][i].userId.toString(), localField: "_id", foreignField: "userId", as: "post_comments"
+                            }
+                        }], function (err, results) {
+                            if (err) {
+                                res.send(utils.errorResponse(err.errmsg));
+                            } else {
+                                var commentSection = {}
+                                commentSection.commentName = results[0].name
+                                commentSection.commentContent = commentText[count]
+                                commentsList.push(commentSection);
+                                count++
+                                if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
+                                    combinedResults.commentsList = commentsList
+                                    combinedResults.likesList = likesList
+                                    res.send(utils.successResponse("yo", combinedResults))
+                                }
+                            }
+                        });
+                    }
+                    for (i = 0; i < likesArrayLength; i++) {
+                        db.collection('users').aggregate([{
+                            $lookup: {
+                                from: item['likes'][i].toString(), localField: "_id", foreignField: "id", as: "post_likes"
+                            }
+                        }], function (err, results) {
+                            if (err) {
+                                res.send(utils.errorResponse(err.errmsg));
+                            } else {
+                                likesList.push(results[0].name);
+                                if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
+                                    combinedResults.commentsList = commentsList
+                                    combinedResults.likesList = likesList
+                                    res.send(utils.successResponse("yo", combinedResults))
+                                }
+                            }
+                        });
+                    }
                 }
             });
         }
