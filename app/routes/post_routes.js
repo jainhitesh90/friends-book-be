@@ -150,7 +150,7 @@ module.exports = function (app, db) {
         }
     });
 
-    /* Dislike a Post */
+    /* Unlike a Post */
     app.put('/post/unlike/:id', utils.isUserAuthenticated, (req, res) => {
         if (req.params.id == null) {
             res.send(utils.errorResponse('Post id missing'));
@@ -212,8 +212,9 @@ module.exports = function (app, db) {
                                 res.send(utils.errorResponse(err.errmsg));
                             } else {
                                 var commentSection = {}
-                                commentSection.commentName = results[0].name
-                                commentSection.commentContent = commentText[count]
+                                commentSection.name = results[0].name
+                                commentSection.image = results[0].image
+                                commentSection.content = commentText[count]
                                 commentsList.push(commentSection);
                                 count++
                                 if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
@@ -235,7 +236,10 @@ module.exports = function (app, db) {
                             if (err) {
                                 res.send(utils.errorResponse(err.errmsg));
                             } else {
-                                likesList.push(results[0].name);
+                                var likeSection = {}
+                                likeSection.name = results[0].name
+                                likeSection.image = results[0].image
+                                likesList.push(likeSection);
                                 if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
                                     combinedResults.commentsList = commentsList
                                     combinedResults.likesList = likesList

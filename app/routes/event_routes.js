@@ -21,7 +21,7 @@ module.exports = function (app, db) {
         } else if (req.body.image == null || req.body.image == '') {
             res.send(utils.errorResponse('Image URL missing'));
         } else {
-            const event = { title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, image: req.body.image, createdAt: Date.now()};
+            const event = { title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, image: req.body.image, createdAt: Date.now() };
             db.collection('events').insert(event, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
@@ -99,7 +99,7 @@ module.exports = function (app, db) {
                 if (eventsLength > 0) {
                     for (i = 0; i < eventsLength; i++) {
                         /* Coutng total likes */
-                        docs[i].likesCount = 0 
+                        docs[i].likesCount = 0
                         if (docs[i].likes != null && docs[i].likes.length > 0) {
                             docs[i].likesCount = docs[i].likes.length
                             if (docs[i].likes.indexOf(userId) != -1) {
@@ -107,7 +107,7 @@ module.exports = function (app, db) {
                             }
                         }
                         /* Coutng total comments */
-                        docs[i].commentsCount = 0 
+                        docs[i].commentsCount = 0
                         if (docs[i].comments != null && docs[i].comments.length > 0) {
                             docs[i].commentsCount = docs[i].comments.length
                         }
@@ -135,7 +135,7 @@ module.exports = function (app, db) {
         }
     });
 
-    /* Dislike a event */
+    /* Unlike a event */
     app.put('/event/unlike/:id', utils.isUserAuthenticated, (req, res) => {
         if (req.params.id == null) {
             res.send(utils.errorResponse('Event id missing'));
@@ -161,11 +161,78 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('events').update(details, { "$push" : { comments : { userId : userId, comment : req.body.newComment } } }, (err, result) => {
+            db.collection('events').update(details, { "$push": { comments: { userId: userId, comment: req.body.newComment } } }, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
                     res.send(utils.successResponse('Commented successfully on event', null))
+                }
+            });
+        }
+    });
+
+    /* Likes and Comments on event */
+    app.get('/event/details/:id', (req, res) => {
+        var combinedResults = {}
+        var commentsList = [], likesList = [], commentText = []
+        var count = 0
+        if (req.params.id == null) {
+            res.send(utils.errorResponse('Event id missing'));
+        } else {
+            const id = req.params.id;
+            const details = { '_id': new ObjectID(id) };
+            db.collection('events').findOne(details, (err, item) => {
+                if (err) {
+                    res.send(utils.errorResponse(err.errmsg));
+                } else {
+                    var commentArrayLength = item['comments'].length
+                    for (i = 0; i < commentArrayLength; i++) {
+                        commentText.push(item['comments'][i].comment)
+                        db.collection('users').aggregate([{
+                            $lookup: {
+                                from: item['comments'][i].userId.toString(), localField: "_id", foreignField: "userId", as: "event_comments"
+                            }
+                        }], function (err, results) {
+                            if (err) {
+                                res.send(utils.errorResponse(err.errmsg));
+                            } else {
+                                var commentSection = {}
+                                commentSection.name = results[0].name
+                                commentSection.image = results[0].image
+                                commentSection.content = commentText[count]
+                                commentsList.push(commentSection);
+                                count++
+                                if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
+                                    combinedResults.commentsList = commentsList
+                                    combinedResults.likesList = likesList
+                                    res.send(utils.successResponse("yo", combinedResults))
+                                }
+                            }
+                        });
+                    }
+
+                    var likesArrayLength = item['likes'].length
+                    for (i = 0; i < likesArrayLength; i++) {
+                        db.collection('users').aggregate([{
+                            $lookup: {
+                                from: item['likes'][i].toString(), localField: "_id", foreignField: "id", as: "event_likes"
+                            }
+                        }], function (err, results) {
+                            if (err) {
+                                res.send(utils.errorResponse(err.errmsg));
+                            } else {
+                                var likeSection = {}
+                                likeSection.name = results[0].name
+                                likeSection.image = results[0].image
+                                likesList.push(likeSection);
+                                if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
+                                    combinedResults.commentsList = commentsList
+                                    combinedResults.likesList = likesList
+                                    res.send(utils.successResponse("yo", combinedResults))
+                                }
+                            }
+                        });
+                    }
                 }
             });
         }
