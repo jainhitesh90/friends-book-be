@@ -140,7 +140,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('posts').update(details, { "$push": { likes: userId } }, (err, result) => {
+            db.collection('posts').update(details, { "$push": { likes: utils.userId } }, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
@@ -157,7 +157,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('posts').update(details, { "$pull": { likes: userId } }, (err, result) => {
+            db.collection('posts').update(details, { "$pull": { likes: utils.userId } }, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
@@ -176,7 +176,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('posts').update(details, { "$push": { comments: { userId: userId, comment: req.body.newComment } } }, (err, result) => {
+            db.collection('posts').update(details, { "$push": { comments: { userId: utils.userId, comment: req.body.newComment } } }, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {

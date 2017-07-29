@@ -116,12 +116,14 @@ module.exports = function (app, db) {
 
     /* Like a blog */
     app.put('/blog/like/:id', utils.isUserAuthenticated, (req, res) => {
+        console.log("blog user id from utils : " + utils.userId)
+        console.log("blog user id normal : " + userId)
         if (req.params.id == null) {
             res.send(utils.errorResponse('Blog id missing'));
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('blogs').update(details, { "$push": { likes: utils.userId } }, (err, result) => {
+            db.collection('blogs').update(details, { "$push": { likes: userId } }, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
@@ -138,7 +140,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('blogs').update(details, { "$pull": { likes: utils.userId } }, (err, result) => {
+            db.collection('blogs').update(details, { "$pull": { likes: userId } }, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
@@ -157,11 +159,78 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('blogs').update(details, { "$push" : { comments : { userId : utils.userId, comment : req.body.newComment } } }, (err, result) => {
+            db.collection('blogs').update(details, { "$push" : { comments : { userId : userId, comment : req.body.newComment } } }, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
                     res.send(utils.successResponse('Commented successfully', null))
+                }
+            });
+        }
+    });
+
+    /* Likes and Comments on blog */
+    app.get('/blog/details/:id', (req, res) => {
+        var combinedResults = {}
+        var commentsList = [], likesList = [], commentText = []
+        var count = 0
+        if (req.params.id == null) {
+            res.send(utils.errorResponse('Blog id missing'));
+        } else {
+            const id = req.params.id;
+            const details = { '_id': new ObjectID(id) };
+            db.collection('blogs').findOne(details, (err, item) => {
+                if (err) {
+                    res.send(utils.errorResponse(err.errmsg));
+                } else {
+                    var commentArrayLength = item['comments'].length
+                    for (i = 0; i < commentArrayLength; i++) {
+                        commentText.push(item['comments'][i].comment)
+                        db.collection('users').aggregate([{
+                            $lookup: {
+                                from: item['comments'][i].userId.toString(), localField: "_id", foreignField: "userId", as: "post_comments"
+                            }
+                        }], function (err, results) {
+                            if (err) {
+                                res.send(utils.errorResponse(err.errmsg));
+                            } else {
+                                var commentSection = {}
+                                commentSection.name = results[0].name
+                                commentSection.image = results[0].image
+                                commentSection.content = commentText[count]
+                                commentsList.push(commentSection);
+                                count++
+                                if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
+                                    combinedResults.commentsList = commentsList
+                                    combinedResults.likesList = likesList
+                                    res.send(utils.successResponse("yo", combinedResults))
+                                }
+                            }
+                        });
+                    }
+
+                    var likesArrayLength = item['likes'].length
+                    for (i = 0; i < likesArrayLength; i++) {
+                        db.collection('users').aggregate([{
+                            $lookup: {
+                                from: item['likes'][i].toString(), localField: "_id", foreignField: "id", as: "post_likes"
+                            }
+                        }], function (err, results) {
+                            if (err) {
+                                res.send(utils.errorResponse(err.errmsg));
+                            } else {
+                                var likeSection = {}
+                                likeSection.name = results[0].name
+                                likeSection.image = results[0].image
+                                likesList.push(likeSection);
+                                if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
+                                    combinedResults.commentsList = commentsList
+                                    combinedResults.likesList = likesList
+                                    res.send(utils.successResponse("yo", combinedResults))
+                                }
+                            }
+                        });
+                    }
                 }
             });
         }
