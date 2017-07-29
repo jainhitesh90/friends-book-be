@@ -253,6 +253,36 @@ module.exports = function (app, db) {
         }
     });
 
+    /* Read My Posts */
+    app.get('/post/my-posts', utils.isUserAuthenticated, (req, res) => {
+        var cursor = db.collection('posts').find({userId : userId});
+        cursor.toArray(function (err, docs) {
+            if (err) {
+                res.send(utils.errorResponse(err.errmsg));
+            } else {
+                var postsLength = docs.length
+                if (postsLength > 0) {
+                    for (i = 0; i < postsLength; i++) {
+                        /* Coutng total likes */
+                        docs[i].likesCount = 0
+                        if (docs[i].likes != null && docs[i].likes.length > 0) {
+                            docs[i].likesCount = docs[i].likes.length
+                            if (docs[i].likes.indexOf(userId) != -1) {
+                                docs[i].hasLiked = true
+                            }
+                        }
+                        /* Coutng total comments */
+                        docs[i].commentsCount = 0
+                        if (docs[i].comments != null && docs[i].comments.length > 0) {
+                            docs[i].commentsCount = docs[i].comments.length
+                        }
+                    }
+                }
+                res.send(utils.successResponse(null, docs))
+            }
+        });
+    });
+
     /* READ */
     // app.get('/post/:id', (req, res) => {
     //     if (req.params.id == null) {
