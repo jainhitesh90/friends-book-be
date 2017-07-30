@@ -28,7 +28,7 @@ module.exports = function (app, db) {
                 } else if (docs.length > 0) {
                     res.send(utils.successResponse('Welcome back!!', docs[0]))
                 } else {
-                    var authToken = utils.getToken(userObject)
+                    var authToken = utils.getToken({ email: req.body.email })
                     /* get user's incremented id */
                     database.collection("counters").findAndModify(
                         { _id: "userId" }, [], { $inc: { lastUserId: 1 } }, { new: true },    // query
@@ -90,10 +90,25 @@ module.exports = function (app, db) {
             }
         }));
     });
- 
+
+    /* USER PROFILE by ID*/
+    app.get('/users/other-profile/:id', utils.isUserAuthenticated, (req, res) => {
+        if (req.params.id == null) {
+            res.send(utils.errorResponse('User id missing'));
+        } else {
+            db.collection('users').findOne({ _id: Number(req.params.id) }, (function (err, item) {
+            if (err) {
+                res.send(utils.errorResponse(err.errmsg));
+            } else {
+                res.send(utils.successResponse("Yeh le profile uska", item))
+            }
+        }));
+        }
+    });
+
     /* USER NOTIFICATIONS */
     app.get('/users/notifications', utils.isUserAuthenticated, (req, res) => {
-        var activityText = [], postId = [], notificationList = []
+        var notificationList = [], activityText = [], postId = [], time = []
         var count = 0
         var cursor = db.collection('notifications').find({ postOwnerId: userId });
         cursor.toArray(function (err, docs) {
@@ -105,28 +120,30 @@ module.exports = function (app, db) {
                     res.send(utils.successResponse("Notification response", notificationList))
                 } else {
                     for (i = 0; i < notificationListLength; i++) {
-                    activityText.push(docs[i].activity)
-                    postId.push(docs[i].postId)
-                    db.collection('users').aggregate([{
-                        $lookup: {
-                            from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "post_comments"
-                        }
-                    }], function (err, results) {
-                        if (err) {
-                            res.send(utils.errorResponse(err.errmsg));
-                        } else {
-                            var notificationSection = {}
-                            notificationSection.name = results[0].name
-                            notificationSection.postId = postId[count]
-                            notificationSection.activity = activityText[count]
-                            notificationList.push(notificationSection);
-                            count++
-                            if (notificationList.length == notificationListLength) {
-                                res.send(utils.successResponse("Notification response", notificationList))
-                            } 
-                        }
-                    });
-                }
+                        activityText.push(docs[i].activity)
+                        postId.push(docs[i].postId)
+                        time.push(docs[i].createdAt)
+                        db.collection('users').aggregate([{
+                            $lookup: {
+                                from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "post_comments"
+                            }
+                        }], function (err, results) {
+                            if (err) {
+                                res.send(utils.errorResponse(err.errmsg));
+                            } else {
+                                var notificationSection = {}
+                                notificationSection.name = results[0].name
+                                notificationSection.postId = postId[count]
+                                notificationSection.time = time[count]
+                                notificationSection.activity = activityText[count]
+                                notificationList.push(notificationSection);
+                                count++
+                                if (notificationList.length == notificationListLength) {
+                                    res.send(utils.successResponse("Notification response", notificationList))
+                                }
+                            }
+                        });
+                    }
                 }
             }
         });

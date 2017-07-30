@@ -42,7 +42,7 @@ module.exports = function (app, db) {
                         if (err) {
                             res.send(utils.errorResponse('Something went wrong!!'))
                         } else {
-                            const post = { userId: userId, contentType : req.body.contentType, contentDescription: req.body.contentDescription, contentUrl: data['Location'], createdAt: Date.now() };
+                            const post = { userId: userId, contentType: req.body.contentType, contentDescription: req.body.contentDescription, contentUrl: data['Location'], createdAt: Date.now() };
                             db.collection('posts').insert(post, (err, result) => {
                                 if (err) {
                                     res.send(utils.errorResponse(err.errmsg));
@@ -96,7 +96,7 @@ module.exports = function (app, db) {
     });
 
     /* Find post by keyword */
-    app.get('/posts/search/:keyword', (req, res) => {
+    app.get('/post/search/:keyword', (req, res) => {
         if (req.params.keyword == null || req.params.keyword == '') {
             res.send(utils.errorResponse('Keyword missing'));
         } else {
@@ -109,7 +109,30 @@ module.exports = function (app, db) {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    res.send(utils.successResponse(null, docs))
+                    var count = 0
+                    var postsLength = docs.length
+                    if (postsLength > 0) {
+                        for (i = 0; i < postsLength; i++) {
+                            /* Post owner details */
+                            db.collection('users').aggregate([{
+                                $lookup: {
+                                    from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "post_owner"
+                                }
+                            }], function (err, results) {
+                                if (err) {
+                                    res.send(utils.errorResponse(err.errmsg));
+                                } else {
+                                    var postSection = {}
+                                    postSection.name = results[0].name
+                                    postSection.image = results[0].image
+                                    docs[count].postOwner = postSection
+                                    count++
+                                    if (count == postsLength)
+                                        res.send(utils.successResponse(null, docs))
+                                }
+                            });
+                        }
+                    }
                 }
             });
         }
@@ -137,6 +160,7 @@ module.exports = function (app, db) {
                             } else {
                                 var postSection = {}
                                 postSection.name = results[0].name
+                                postSection.userId = results[0]._id
                                 postSection.image = results[0].image
                                 docs[count].postOwner = postSection
 
@@ -317,6 +341,40 @@ module.exports = function (app, db) {
                 res.send(utils.successResponse(null, docs))
             }
         });
+    });
+
+    /* Read Others Posts */
+    app.get('/post/other-posts/:id', utils.isUserAuthenticated, (req, res) => {
+        if (req.params.id == null) {
+            res.send(utils.errorResponse('Post id missing'));
+        } else {
+            var cursor = db.collection('posts').find({ userId: Number(req.params.id) });
+            cursor.toArray(function (err, docs) {
+                if (err) {
+                    res.send(utils.errorResponse(err.errmsg));
+                } else {
+                    var postsLength = docs.length
+                    if (postsLength > 0) {
+                        for (i = 0; i < postsLength; i++) {
+                            /* Coutng total likes */
+                            docs[i].likesCount = 0
+                            if (docs[i].likes != null && docs[i].likes.length > 0) {
+                                docs[i].likesCount = docs[i].likes.length
+                                if (docs[i].likes.indexOf(userId) != -1) {
+                                    docs[i].hasLiked = true
+                                }
+                            }
+                            /* Coutng total comments */
+                            docs[i].commentsCount = 0
+                            if (docs[i].comments != null && docs[i].comments.length > 0) {
+                                docs[i].commentsCount = docs[i].comments.length
+                            }
+                        }
+                    }
+                    res.send(utils.successResponse(null, docs))
+                }
+            });
+        }
     });
 
     /* READ */

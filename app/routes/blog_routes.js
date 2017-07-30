@@ -72,7 +72,6 @@ module.exports = function (app, db) {
                     { title: { $regex: ".*" + req.params.keyword + ".*", '$options': 'i' } },
                     { description: { $regex: ".*" + req.params.keyword + ".*", '$options': 'i' } }
                 ]
-                //title : {$regex : ".*" + req.params.keyword + ".*", '$options' : 'i'}
             });
             cursor.toArray(function (err, docs) {
                 if (err) {
