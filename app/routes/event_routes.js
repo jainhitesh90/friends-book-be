@@ -120,7 +120,6 @@ module.exports = function (app, db) {
 
     /* Like a event */
     app.put('/event/like/:id', utils.isUserAuthenticated, (req, res) => {
-        console.log("event user id from utils : " + utils.userId)
         console.log("event user id normal : " + userId)
         if (req.params.id == null) {
             res.send(utils.errorResponse('Event id missing'));

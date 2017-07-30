@@ -98,7 +98,7 @@ module.exports = function (app, db) {
                         docs[i].likesCount = 0 
                         if (docs[i].likes != null && docs[i].likes.length > 0) {
                             docs[i].likesCount = docs[i].likes.length
-                            if (docs[i].likes.indexOf(utils.userId) != -1) {
+                            if (docs[i].likes.indexOf(userId) != -1) {
                                 docs[i].hasLiked = true
                             }
                         }
@@ -116,7 +116,6 @@ module.exports = function (app, db) {
 
     /* Like a blog */
     app.put('/blog/like/:id', utils.isUserAuthenticated, (req, res) => {
-        console.log("blog user id from utils : " + utils.userId)
         console.log("blog user id normal : " + userId)
         if (req.params.id == null) {
             res.send(utils.errorResponse('Blog id missing'));

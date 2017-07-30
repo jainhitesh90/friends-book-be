@@ -81,13 +81,54 @@ module.exports = function (app, db) {
     });
 
     /* USER PROFILE */
-    app.get('/users/profile', (req, res) => {
-        db.collection('users').findOne({ authToken: req.get('authToken') }, (function (err, item) {
+    app.get('/users/profile', utils.isUserAuthenticated, (req, res) => {
+        db.collection('users').findOne({ _id: userId }, (function (err, item) {
             if (err) {
                 res.send(utils.errorResponse(err.errmsg));
             } else {
                 res.send(utils.successResponse("Yeh le profile", item))
             }
         }));
+    });
+ 
+    /* USER NOTIFICATIONS */
+    app.get('/users/notifications', utils.isUserAuthenticated, (req, res) => {
+        var activityText = [], postId = [], notificationList = []
+        var count = 0
+        var cursor = db.collection('notifications').find({ postOwnerId: userId });
+        cursor.toArray(function (err, docs) {
+            if (err) {
+                res.send(utils.errorResponse(err.errmsg));
+            } else {
+                var notificationListLength = docs.length
+                if (notificationListLength == 0) {
+                    res.send(utils.successResponse("Notification response", notificationList))
+                } else {
+                    for (i = 0; i < notificationListLength; i++) {
+                    activityText.push(docs[i].activity)
+                    postId.push(docs[i].postId)
+                    db.collection('users').aggregate([{
+                        $lookup: {
+                            from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "post_comments"
+                        }
+                    }], function (err, results) {
+                        if (err) {
+                            res.send(utils.errorResponse(err.errmsg));
+                        } else {
+                            var notificationSection = {}
+                            notificationSection.name = results[0].name
+                            notificationSection.postId = postId[count]
+                            notificationSection.activity = activityText[count]
+                            notificationList.push(notificationSection);
+                            count++
+                            if (notificationList.length == notificationListLength) {
+                                res.send(utils.successResponse("Notification response", notificationList))
+                            } 
+                        }
+                    });
+                }
+                }
+            }
+        });
     });
 };

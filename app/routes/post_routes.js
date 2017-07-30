@@ -1,4 +1,5 @@
 const utils = require('../../utils/utils.js')
+const constants = require('../../utils/constants.js')
 var multer = require('multer')
 var upload = multer({ dest: 'uploads/' })
 
@@ -140,11 +141,12 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('posts').update(details, { "$push": { likes: utils.userId } }, (err, result) => {
+            db.collection('posts').update(details, { "$push": { likes: userId } }, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    res.send(utils.successResponse('Post liked successfully', null))
+                    updateNotifications(req.params.id, userId, constants.like)
+                    res.send(utils.successResponse('Post liked successfully', result))
                 }
             });
         }
@@ -157,11 +159,12 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('posts').update(details, { "$pull": { likes: utils.userId } }, (err, result) => {
+            db.collection('posts').update(details, { "$pull": { likes: userId } }, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    res.send(utils.successResponse('Post like removed successfully', null))
+                    updateNotifications(req.params.id, userId, constants.unlike)
+                    res.send(utils.successResponse('Post like removed successfully', result))
                 }
             });
         }
@@ -176,11 +179,12 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('posts').update(details, { "$push": { comments: { userId: utils.userId, comment: req.body.newComment } } }, (err, result) => {
+            db.collection('posts').update(details, { "$push": { comments: { userId: userId, comment: req.body.newComment } } }, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    res.send(utils.successResponse('Commented successfully on post', null))
+                    updateNotifications(req.params.id, userId, constants.comment)
+                    res.send(utils.successResponse('Commented successfully on post', result))
                 }
             });
         }
@@ -255,7 +259,7 @@ module.exports = function (app, db) {
 
     /* Read My Posts */
     app.get('/post/my-posts', utils.isUserAuthenticated, (req, res) => {
-        var cursor = db.collection('posts').find({userId : userId});
+        var cursor = db.collection('posts').find({ userId: userId });
         cursor.toArray(function (err, docs) {
             if (err) {
                 res.send(utils.errorResponse(err.errmsg));
@@ -284,19 +288,72 @@ module.exports = function (app, db) {
     });
 
     /* READ */
-    // app.get('/post/:id', (req, res) => {
-    //     if (req.params.id == null) {
-    //         res.send(utils.errorResponse('Post id missing'));
-    //     } else {
-    //         const id = req.params.id;
-    //         const details = { '_id': new ObjectID(id) };
-    //         db.collection('posts').findOne(details, (err, item) => {
-    //             if (err) {
-    //                 res.send(utils.errorResponse(err.errmsg));
-    //             } else {
-    //                 res.send(utils.successResponse(null, item))
-    //             }
-    //         });
-    //     }
-    // });
-};
+    app.get('/post/:id', (req, res) => {
+        if (req.params.id == null) {
+            res.send(utils.errorResponse('Post id missing'));
+        } else {
+            const id = req.params.id;
+            const details = { '_id': new ObjectID(id) };
+            db.collection('posts').findOne(details, (err, item) => {
+                if (err) {
+                    res.send(utils.errorResponse(err.errmsg));
+                } else {
+                    res.send(utils.successResponse(null, item))
+                }
+            });
+        }
+    });
+
+    var updateNotifications = function (postId, userId, activity) {
+        console.log("searching post wid post id : " + postId)
+        const details = { '_id': new ObjectID(postId) };
+        db.collection('posts').findOne(details, (err, item) => {
+            if (err) {
+                console.log("error fetching post details")
+            } else if (item != null && item.userId != null) {
+                var postOwnerId = item.userId
+                console.log("postOwnerId : " + postOwnerId)
+                switch (activity) {
+                    case constants.like:
+                        const notificationLike = { postId: postId, postOwnerId: postOwnerId, userId: userId, activity: activity, createdAt: Date.now() };
+                        db.collection('notifications').insert(notificationLike, (err, result) => {
+                            if (err) {
+                                console.log("error : " + err.errmsg)
+                            } else {
+                                sendNotificationToUser(postOwnerId, userId, "liked your post")
+                                console.log("User with id " + userId + " liked your post with id " + postId)
+                            }
+                        });
+                        break;
+                    case constants.unlike:
+                        const notificationUnlike = { postId: postId, postOwnerId: postOwnerId, userId: userId, activity: constants.like };
+                        db.collection('notifications').remove(notificationUnlike, (err, item) => {
+                            if (err) {
+                                console.log("error : " + err.errmsg)
+                            } else {
+                                console.log("User with id " + userId + " unliked your post with id " + postId)
+                            }
+                        });
+                        break;
+                    case constants.comment:
+                        const notificationComment = { postId: postId, postOwnerId: postOwnerId, userId: userId, activity: activity, createdAt: Date.now() };
+                        db.collection('notifications').insert(notificationComment, (err, result) => {
+                            if (err) {
+                                console.log("error : " + err.errmsg)
+                            } else {
+                                sendNotificationToUser(postOwnerId, userId, "commented on your post")
+                                console.log("User with id " + userId + " commented on your post with id " + postId)
+                            }
+                        });
+                        break;
+                    default:
+                        console.log("Something went wrong")
+                }
+            }
+        });
+    }
+
+    var sendNotificationToUser = function (postOwnerId, userId, message){
+        console.log("Notification sent to " + postOwnerId + ", user with userid " + userId + " and message " + message )
+    }
+}
