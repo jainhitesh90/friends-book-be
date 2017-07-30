@@ -106,6 +106,7 @@ module.exports = function (app, db) {
 
     /* READ ALL */
     app.get('/post/list', utils.isUserAuthenticated, (req, res) => {
+        var count = 0;
         var cursor = db.collection('posts').find({});
         cursor.toArray(function (err, docs) {
             if (err) {
@@ -114,22 +115,43 @@ module.exports = function (app, db) {
                 var postsLength = docs.length
                 if (postsLength > 0) {
                     for (i = 0; i < postsLength; i++) {
-                        /* Coutng total likes */
-                        docs[i].likesCount = 0
-                        if (docs[i].likes != null && docs[i].likes.length > 0) {
-                            docs[i].likesCount = docs[i].likes.length
-                            if (docs[i].likes.indexOf(userId) != -1) {
-                                docs[i].hasLiked = true
+                        /* Post owner details */
+                        db.collection('users').aggregate([{
+                            $lookup: {
+                                from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "post_owner"
                             }
-                        }
-                        /* Coutng total comments */
-                        docs[i].commentsCount = 0
-                        if (docs[i].comments != null && docs[i].comments.length > 0) {
-                            docs[i].commentsCount = docs[i].comments.length
-                        }
+                        }], function (err, results) {
+                            if (err) {
+                                res.send(utils.errorResponse(err.errmsg));
+                            } else {
+                                var postSection = {}
+                                postSection.name = results[0].name
+                                postSection.image = results[0].image
+                                docs[count].postOwner = postSection
+
+                                /* Coutng total likes */
+                                docs[count].likesCount = 0
+                                if (docs[count].likes != null && docs[count].likes.length > 0) {
+                                    docs[count].likesCount = docs[count].likes.length
+                                    if (docs[count].likes.indexOf(userId) != -1) {
+                                        docs[count].hasLiked = true
+                                    }
+                                }
+                                /* Coutng total comments */
+                                docs[count].commentsCount = 0
+                                if (docs[count].comments != null && docs[count].comments.length > 0) {
+                                    docs[count].commentsCount = docs[count].comments.length
+                                }
+
+                                count++
+
+                                if (count == postsLength)
+                                    res.send(utils.successResponse(null, docs))
+                            }
+                        });
                     }
                 }
-                res.send(utils.successResponse(null, docs))
+                
             }
         });
     });
@@ -353,7 +375,7 @@ module.exports = function (app, db) {
         });
     }
 
-    var sendNotificationToUser = function (postOwnerId, userId, message){
-        console.log("Notification sent to " + postOwnerId + ", user with userid " + userId + " and message " + message )
+    var sendNotificationToUser = function (postOwnerId, userId, message) {
+        console.log("Notification sent to " + postOwnerId + ", user with userid " + userId + " and message " + message)
     }
 }

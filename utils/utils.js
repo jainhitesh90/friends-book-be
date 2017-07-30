@@ -50,7 +50,6 @@ module.exports = {
                     res.send(module.exports.errorResponse("1 Token invalid"));
                 } else if (item != null) {
                     userId = item._id
-                    console.log("token validated with user id " + userId)
                     return next();
                 } else {
                     res.send(module.exports.errorResponse("2 Token Invalid"));

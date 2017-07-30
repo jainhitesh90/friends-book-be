@@ -29,7 +29,7 @@ MongoClient.connect(credentials.url, (err, database) => {
     database.collection('admin').ensureIndex({ userName: 1 }, { unique: true });
 
     database.createCollection('counters')
-    database.collection('counters').insert({_id:"userId", lastUserId:0})
+    database.collection('counters').insert({ _id: "userId", lastUserId: 0 })
 
     /* user collection */
     database.createCollection('users')
