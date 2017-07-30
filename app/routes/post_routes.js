@@ -16,14 +16,25 @@ module.exports = function (app, db) {
         var fs = require('fs');
         var file = req.file;
         if (req.body.contentDescription == null || req.body.contentDescription == '') {
-            res.send(utils.errorResponse('Please add some description'))
+            res.send(utils.errorResponse('Describe your post'))
         } else if (file == null || file.path == null) {
-            res.send(utils.errorResponse('File missing'))
+            const post = { userId: userId, contentDescription: req.body.contentDescription, createdAt: Date.now() };
+            db.collection('posts').insert(post, (err, result) => {
+                if (err) {
+                    res.send(utils.errorResponse(err.errmsg));
+                } else {
+                    res.send(utils.successResponse("Posted successfully", result.ops[0]))
+                }
+            });
         } else {
             fs.readFile(file.path, function (err, data) {
                 if (err) throw err; // Something went wrong!
                 s3Bucket.createBucket(function () {
-                    var params = { Key: file.filename, Body: data, ContentType: 'image/png', ACL: 'public-read' };
+                    var params = null
+                    if (req.body.contentType == 'image')
+                        params = { Key: file.filename, Body: data, ContentType: 'image/png', ACL: 'public-read' };
+                    else if (req.body.contentType == 'video')
+                        params = { Key: file.filename, Body: data, ContentType: 'video', ACL: 'public-read' };
                     s3Bucket.upload(params, function (err, data) {
                         fs.unlink(file.path, function (err) {
                             if (err) { console.error(err); }
@@ -31,7 +42,7 @@ module.exports = function (app, db) {
                         if (err) {
                             res.send(utils.errorResponse('Something went wrong!!'))
                         } else {
-                            const post = { userId: userId, contentDescription: req.body.contentDescription, contentUrl: data['Location'], createdAt: Date.now() };
+                            const post = { userId: userId, contentType : req.body.contentType, contentDescription: req.body.contentDescription, contentUrl: data['Location'], createdAt: Date.now() };
                             db.collection('posts').insert(post, (err, result) => {
                                 if (err) {
                                     res.send(utils.errorResponse(err.errmsg));
@@ -151,7 +162,6 @@ module.exports = function (app, db) {
                         });
                     }
                 }
-                
             }
         });
     });
