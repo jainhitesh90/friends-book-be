@@ -249,7 +249,7 @@ module.exports = function (app, db) {
     //                 item.likesCount = 0 //initializing
     //                 if (item.likes != null && item.likes.length > 0) {
     //                     item.likesCount = item.likes.length
-    //                     if (item.likes.indexOf(utils.userId) != -1) {
+    //                     if (item.likes.indexOf(userId) != -1) {
     //                         item.hasLiked = true
     //                     }
     //                 }
