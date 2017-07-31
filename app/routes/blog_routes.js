@@ -186,7 +186,7 @@ module.exports = function (app, db) {
                         commentText.push(item['comments'][i].comment)
                         db.collection('users').aggregate([{
                             $lookup: {
-                                from: item['comments'][i].userId.toString(), localField: "_id", foreignField: "userId", as: "post_comments"
+                                from: item['comments'][i].userId.toString(), localField: "_id", foreignField: "userId", as: "feed_comments"
                             }
                         }], function (err, results) {
                             if (err) {
@@ -211,7 +211,7 @@ module.exports = function (app, db) {
                     for (i = 0; i < likesArrayLength; i++) {
                         db.collection('users').aggregate([{
                             $lookup: {
-                                from: item['likes'][i].toString(), localField: "_id", foreignField: "id", as: "post_likes"
+                                from: item['likes'][i].toString(), localField: "_id", foreignField: "id", as: "feed_likes"
                             }
                         }], function (err, results) {
                             if (err) {

@@ -108,9 +108,9 @@ module.exports = function (app, db) {
 
     /* USER NOTIFICATIONS */
     app.get('/users/notifications', utils.isUserAuthenticated, (req, res) => {
-        var notificationList = [], activityText = [], postId = [], time = []
+        var notificationList = [], activityText = [], feedId = [], time = []
         var count = 0
-        var cursor = db.collection('notifications').find({ postOwnerId: userId });
+        var cursor = db.collection('notifications').find({ feedOwnerId: userId });
         cursor.toArray(function (err, docs) {
             if (err) {
                 res.send(utils.errorResponse(err.errmsg));
@@ -121,11 +121,11 @@ module.exports = function (app, db) {
                 } else {
                     for (i = 0; i < notificationListLength; i++) {
                         activityText.push(docs[i].activity)
-                        postId.push(docs[i].postId)
+                        feedId.push(docs[i].feedId)
                         time.push(docs[i].createdAt)
                         db.collection('users').aggregate([{
                             $lookup: {
-                                from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "post_comments"
+                                from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "feed_comments"
                             }
                         }], function (err, results) {
                             if (err) {
@@ -133,7 +133,7 @@ module.exports = function (app, db) {
                             } else {
                                 var notificationSection = {}
                                 notificationSection.name = results[0].name
-                                notificationSection.postId = postId[count]
+                                notificationSection.feedId = feedId[count]
                                 notificationSection.time = time[count]
                                 notificationSection.activity = activityText[count]
                                 notificationList.push(notificationSection);

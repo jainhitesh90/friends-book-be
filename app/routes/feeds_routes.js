@@ -8,7 +8,7 @@ module.exports = function (app, db) {
     var ObjectID = require('mongodb').ObjectID;
 
     /* CREATE */
-    app.post('/post/add', [utils.isUserAuthenticated, upload.single('content')], (req, res) => {
+    app.post('/feed/add', [utils.isUserAuthenticated, upload.single('content')], (req, res) => {
         var AWS = require('aws-sdk');
         AWS.config.loadFromPath('./config/aws-config.json');
         const configFile = require('../../config/credentials');
@@ -16,14 +16,14 @@ module.exports = function (app, db) {
         var fs = require('fs');
         var file = req.file;
         if (req.body.contentDescription == null || req.body.contentDescription == '') {
-            res.send(utils.errorResponse('Describe your post'))
+            res.send(utils.errorResponse('Describe your feed'))
         } else if (file == null || file.path == null) {
-            const post = { userId: userId, contentDescription: req.body.contentDescription, createdAt: Date.now() };
-            db.collection('posts').insert(post, (err, result) => {
+            const feed = { userId: userId, contentDescription: req.body.contentDescription, createdAt: Date.now() };
+            db.collection('feeds').insert(feed, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    res.send(utils.successResponse("Posted successfully", result.ops[0]))
+                    res.send(utils.successResponse("Feed added successfully", result.ops[0]))
                 }
             });
         } else {
@@ -42,12 +42,12 @@ module.exports = function (app, db) {
                         if (err) {
                             res.send(utils.errorResponse('Something went wrong!!'))
                         } else {
-                            const post = { userId: userId, contentType: req.body.contentType, contentDescription: req.body.contentDescription, contentUrl: data['Location'], createdAt: Date.now() };
-                            db.collection('posts').insert(post, (err, result) => {
+                            const feed = { userId: userId, contentType: req.body.contentType, contentDescription: req.body.contentDescription, contentUrl: data['Location'], createdAt: Date.now() };
+                            db.collection('feeds').insert(feed, (err, result) => {
                                 if (err) {
                                     res.send(utils.errorResponse(err.errmsg));
                                 } else {
-                                    res.send(utils.successResponse("Posted successfully", result.ops[0]))
+                                    res.send(utils.successResponse("Feed added successfully", result.ops[0]))
                                 }
                             });
                         }
@@ -58,49 +58,48 @@ module.exports = function (app, db) {
     });
 
     /* UPDATE */
-    app.put('/post/update/:id', utils.isUserAuthenticated, (req, res) => {
+    app.put('/feed/update/:id', utils.isUserAuthenticated, (req, res) => {
         if (req.params.id == null) {
-            res.send(utils.errorResponse('Post id missing'));
+            res.send(utils.errorResponse('Feed id missing'));
         } else if (req.body.contentDescription == null || req.body.contentDescription == '') {
             res.send(utils.errorResponse('Please add some description'))
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            const post = { $set: { contentDescription: req.body.contentDescription, updatedAt: Date.now() } };
-            db.collection('posts').update(details, post, (err, result) => {
+            const feed = { $set: { contentDescription: req.body.contentDescription, updatedAt: Date.now() } };
+            db.collection('feeds').update(details, feed, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    res.send(utils.successResponse('Post updated successfully', null))
+                    res.send(utils.successResponse('Feed updated successfully', null))
                 }
             });
         }
     });
 
     /* DELETE */
-    app.delete('/post/delete/:id', utils.isUserAuthenticated, (req, res) => {
+    app.delete('/feed/delete/:id', utils.isUserAuthenticated, (req, res) => {
         if (req.params.id == null) {
-            res.send(utils.errorResponse('Post id missing'));
+            res.send(utils.errorResponse('Feed id missing'));
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('posts').remove(details, (err, item) => {
+            db.collection('feeds').remove(details, (err, item) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    res.send(utils.successResponse('Post deleted successfully', null))
+                    res.send(utils.successResponse('Feed deleted successfully', null))
                 }
             });
         }
-
     });
 
-    /* Find post by keyword */
-    app.get('/post/search/:keyword', (req, res) => {
+    /* Find feed by keyword */
+    app.get('/feed/search/:keyword', (req, res) => {
         if (req.params.keyword == null || req.params.keyword == '') {
             res.send(utils.errorResponse('Keyword missing'));
         } else {
-            var cursor = db.collection('posts').find({
+            var cursor = db.collection('feeds').find({
                 $or: [
                     { contentDescription: { $regex: ".*" + req.params.keyword + ".*", '$options': 'i' } }
                 ]
@@ -110,24 +109,25 @@ module.exports = function (app, db) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
                     var count = 0
-                    var postsLength = docs.length
-                    if (postsLength > 0) {
-                        for (i = 0; i < postsLength; i++) {
-                            /* Post owner details */
+                    var feedsLength = docs.length
+                    if (feedsLength > 0) {
+                        for (i = 0; i < feedsLength; i++) {
+                            /* Feed owner details */
                             db.collection('users').aggregate([{
                                 $lookup: {
-                                    from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "post_owner"
+                                    from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "feed_owner"
                                 }
                             }], function (err, results) {
                                 if (err) {
                                     res.send(utils.errorResponse(err.errmsg));
                                 } else {
-                                    var postSection = {}
-                                    postSection.name = results[0].name
-                                    postSection.image = results[0].image
-                                    docs[count].postOwner = postSection
+                                    var feedSection = {}
+                                    feedSection.name = results[0].name
+                                    feedSection.userId = results[0]._id
+                                    feedSection.image = results[0].image
+                                    docs[count].feedOwner = feedSection
                                     count++
-                                    if (count == postsLength)
+                                    if (count == feedsLength)
                                         res.send(utils.successResponse(null, docs))
                                 }
                             });
@@ -139,30 +139,30 @@ module.exports = function (app, db) {
     });
 
     /* READ ALL */
-    app.get('/post/list', utils.isUserAuthenticated, (req, res) => {
+    app.get('/feed/list', utils.isUserAuthenticated, (req, res) => {
         var count = 0;
-        var cursor = db.collection('posts').find({});
+        var cursor = db.collection('feeds').find({});
         cursor.toArray(function (err, docs) {
             if (err) {
                 res.send(utils.errorResponse(err.errmsg));
             } else {
-                var postsLength = docs.length
-                if (postsLength > 0) {
-                    for (i = 0; i < postsLength; i++) {
-                        /* Post owner details */
+                var feedsLength = docs.length
+                if (feedsLength > 0) {
+                    for (i = 0; i < feedsLength; i++) {
+                        /* Feed owner details */
                         db.collection('users').aggregate([{
                             $lookup: {
-                                from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "post_owner"
+                                from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "feed_owner"
                             }
                         }], function (err, results) {
                             if (err) {
                                 res.send(utils.errorResponse(err.errmsg));
                             } else {
-                                var postSection = {}
-                                postSection.name = results[0].name
-                                postSection.userId = results[0]._id
-                                postSection.image = results[0].image
-                                docs[count].postOwner = postSection
+                                var feedSection = {}
+                                feedSection.name = results[0].name
+                                feedSection.userId = results[0]._id
+                                feedSection.image = results[0].image
+                                docs[count].feedOwner = feedSection
 
                                 /* Coutng total likes */
                                 docs[count].likesCount = 0
@@ -180,7 +180,7 @@ module.exports = function (app, db) {
 
                                 count++
 
-                                if (count == postsLength)
+                                if (count == feedsLength)
                                     res.send(utils.successResponse(null, docs))
                             }
                         });
@@ -190,73 +190,73 @@ module.exports = function (app, db) {
         });
     });
 
-    /* Like a Post */
-    app.put('/post/like/:id', utils.isUserAuthenticated, (req, res) => {
+    /* Like a Feed */
+    app.put('/feed/like/:id', utils.isUserAuthenticated, (req, res) => {
         if (req.params.id == null) {
-            res.send(utils.errorResponse('Post id missing'));
+            res.send(utils.errorResponse('Feed id missing'));
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('posts').update(details, { "$push": { likes: userId } }, (err, result) => {
+            db.collection('feeds').update(details, { "$push": { likes: userId } }, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
                     updateNotifications(req.params.id, userId, constants.like)
-                    res.send(utils.successResponse('Post liked successfully', result))
+                    res.send(utils.successResponse('Feed liked successfully', result))
                 }
             });
         }
     });
 
-    /* Unlike a Post */
-    app.put('/post/unlike/:id', utils.isUserAuthenticated, (req, res) => {
+    /* Unlike a Feed */
+    app.put('/feed/unlike/:id', utils.isUserAuthenticated, (req, res) => {
         if (req.params.id == null) {
-            res.send(utils.errorResponse('Post id missing'));
+            res.send(utils.errorResponse('Feed id missing'));
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('posts').update(details, { "$pull": { likes: userId } }, (err, result) => {
+            db.collection('feeds').update(details, { "$pull": { likes: userId } }, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
                     updateNotifications(req.params.id, userId, constants.unlike)
-                    res.send(utils.successResponse('Post like removed successfully', result))
+                    res.send(utils.successResponse('Feed like removed successfully', result))
                 }
             });
         }
     });
 
-    /* Comment on a Post */
-    app.put('/post/comment/:id', utils.isUserAuthenticated, (req, res) => {
+    /* Comment on a Feed */
+    app.put('/feed/comment/:id', utils.isUserAuthenticated, (req, res) => {
         if (req.params.id == null) {
-            res.send(utils.errorResponse('Post id missing'));
+            res.send(utils.errorResponse('Feed id missing'));
         } else if (req.body.newComment == null || req.body.newComment == '') {
             res.send(utils.errorResponse('Comment missing'));
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('posts').update(details, { "$push": { comments: { userId: userId, comment: req.body.newComment } } }, (err, result) => {
+            db.collection('feeds').update(details, { "$push": { comments: { userId: userId, comment: req.body.newComment } } }, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
                     updateNotifications(req.params.id, userId, constants.comment)
-                    res.send(utils.successResponse('Commented successfully on post', result))
+                    res.send(utils.successResponse('Commented successfully on feed', result))
                 }
             });
         }
     });
 
-    /* Likes and Comments on post */
-    app.get('/post/details/:id', (req, res) => {
+    /* Likes and Comments on Feed */
+    app.get('/feed/details/:id', (req, res) => {
         var combinedResults = {}
         var commentsList = [], likesList = [], commentText = []
         var count = 0
         if (req.params.id == null) {
-            res.send(utils.errorResponse('Post id missing'));
+            res.send(utils.errorResponse('Feed id missing'));
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('posts').findOne(details, (err, item) => {
+            db.collection('feeds').findOne(details, (err, item) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
@@ -265,7 +265,7 @@ module.exports = function (app, db) {
                         commentText.push(item['comments'][i].comment)
                         db.collection('users').aggregate([{
                             $lookup: {
-                                from: item['comments'][i].userId.toString(), localField: "_id", foreignField: "userId", as: "post_comments"
+                                from: item['comments'][i].userId.toString(), localField: "_id", foreignField: "userId", as: "feed_comments"
                             }
                         }], function (err, results) {
                             if (err) {
@@ -290,7 +290,7 @@ module.exports = function (app, db) {
                     for (i = 0; i < likesArrayLength; i++) {
                         db.collection('users').aggregate([{
                             $lookup: {
-                                from: item['likes'][i].toString(), localField: "_id", foreignField: "id", as: "post_likes"
+                                from: item['likes'][i].toString(), localField: "_id", foreignField: "id", as: "feed_likes"
                             }
                         }], function (err, results) {
                             if (err) {
@@ -313,16 +313,16 @@ module.exports = function (app, db) {
         }
     });
 
-    /* Read My Posts */
-    app.get('/post/my-posts', utils.isUserAuthenticated, (req, res) => {
-        var cursor = db.collection('posts').find({ userId: userId });
+    /* Read My Feeds */
+    app.get('/feed/my-feeds', utils.isUserAuthenticated, (req, res) => {
+        var cursor = db.collection('feeds').find({ userId: userId });
         cursor.toArray(function (err, docs) {
             if (err) {
                 res.send(utils.errorResponse(err.errmsg));
             } else {
-                var postsLength = docs.length
-                if (postsLength > 0) {
-                    for (i = 0; i < postsLength; i++) {
+                var feedsLength = docs.length
+                if (feedsLength > 0) {
+                    for (i = 0; i < feedsLength; i++) {
                         /* Coutng total likes */
                         docs[i].likesCount = 0
                         if (docs[i].likes != null && docs[i].likes.length > 0) {
@@ -343,19 +343,19 @@ module.exports = function (app, db) {
         });
     });
 
-    /* Read Others Posts */
-    app.get('/post/other-posts/:id', utils.isUserAuthenticated, (req, res) => {
+    /* Read Others Feeds */
+    app.get('/feed/other-feeds/:id', utils.isUserAuthenticated, (req, res) => {
         if (req.params.id == null) {
-            res.send(utils.errorResponse('Post id missing'));
+            res.send(utils.errorResponse('Feed id missing'));
         } else {
-            var cursor = db.collection('posts').find({ userId: Number(req.params.id) });
+            var cursor = db.collection('feeds').find({ userId: Number(req.params.id) });
             cursor.toArray(function (err, docs) {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    var postsLength = docs.length
-                    if (postsLength > 0) {
-                        for (i = 0; i < postsLength; i++) {
+                    var feedsLength = docs.length
+                    if (feedsLength > 0) {
+                        for (i = 0; i < feedsLength; i++) {
                             /* Coutng total likes */
                             docs[i].likesCount = 0
                             if (docs[i].likes != null && docs[i].likes.length > 0) {
@@ -378,13 +378,13 @@ module.exports = function (app, db) {
     });
 
     /* READ */
-    app.get('/post/:id', (req, res) => {
+    app.get('/feed/:id', (req, res) => {
         if (req.params.id == null) {
-            res.send(utils.errorResponse('Post id missing'));
+            res.send(utils.errorResponse('Feed id missing'));
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('posts').findOne(details, (err, item) => {
+            db.collection('feeds').findOne(details, (err, item) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
@@ -394,45 +394,40 @@ module.exports = function (app, db) {
         }
     });
 
-    var updateNotifications = function (postId, userId, activity) {
-        console.log("searching post wid post id : " + postId)
-        const details = { '_id': new ObjectID(postId) };
-        db.collection('posts').findOne(details, (err, item) => {
+    var updateNotifications = function (feedId, userId, activity) {
+        const details = { '_id': new ObjectID(feedId) };
+        db.collection('feeds').findOne(details, (err, item) => {
             if (err) {
-                console.log("error fetching post details")
             } else if (item != null && item.userId != null) {
-                var postOwnerId = item.userId
-                console.log("postOwnerId : " + postOwnerId)
+                var feedOwnerId = item.userId
                 switch (activity) {
                     case constants.like:
-                        const notificationLike = { postId: postId, postOwnerId: postOwnerId, userId: userId, activity: activity, createdAt: Date.now() };
+                        const notificationLike = { feedId: feedId, feedOwnerId: feedOwnerId, userId: userId, activity: activity, createdAt: Date.now() };
                         db.collection('notifications').insert(notificationLike, (err, result) => {
                             if (err) {
                                 console.log("error : " + err.errmsg)
                             } else {
-                                sendNotificationToUser(postOwnerId, userId, "liked your post")
-                                console.log("User with id " + userId + " liked your post with id " + postId)
+                                sendNotificationToUser(feedOwnerId, userId, "liked your feed")
                             }
                         });
                         break;
                     case constants.unlike:
-                        const notificationUnlike = { postId: postId, postOwnerId: postOwnerId, userId: userId, activity: constants.like };
+                        const notificationUnlike = { feedId: feedId, feedOwnerId: feedOwnerId, userId: userId, activity: constants.like };
                         db.collection('notifications').remove(notificationUnlike, (err, item) => {
                             if (err) {
                                 console.log("error : " + err.errmsg)
                             } else {
-                                console.log("User with id " + userId + " unliked your post with id " + postId)
+                                console.log("User with id " + userId + " unliked your feed with id " + feedId)
                             }
                         });
                         break;
                     case constants.comment:
-                        const notificationComment = { postId: postId, postOwnerId: postOwnerId, userId: userId, activity: activity, createdAt: Date.now() };
+                        const notificationComment = { feedId: feedId, feedOwnerId: feedOwnerId, userId: userId, activity: activity, createdAt: Date.now() };
                         db.collection('notifications').insert(notificationComment, (err, result) => {
                             if (err) {
                                 console.log("error : " + err.errmsg)
                             } else {
-                                sendNotificationToUser(postOwnerId, userId, "commented on your post")
-                                console.log("User with id " + userId + " commented on your post with id " + postId)
+                                sendNotificationToUser(feedOwnerId, userId, "commented on your feed")
                             }
                         });
                         break;
@@ -443,7 +438,7 @@ module.exports = function (app, db) {
         });
     }
 
-    var sendNotificationToUser = function (postOwnerId, userId, message) {
-        console.log("Notification sent to " + postOwnerId + ", user with userid " + userId + " and message " + message)
+    var sendNotificationToUser = function (feedOwnerId, userId, message) {
+        console.log("Notification sent to " + feedOwnerId + ", user with userid " + userId + " and message " + message)
     }
 }
