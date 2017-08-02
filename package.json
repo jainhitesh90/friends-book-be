@@ -12,6 +12,7 @@
     "aws-sdk": "^2.88.0",
     "body-parser": "^1.17.2",
     "express": "^4.15.3",
+    "fcm-node": "^1.2.0",
     "jsonwebtoken": "^7.4.1",
     "mongodb": "^2.2.30",
     "mongoose": "^4.11.3",

@@ -524,6 +524,32 @@ module.exports = function (app, db) {
     }
 
     var sendNotificationToUser = function (feedOwnerId, userId, message) {
-        console.log("Notification sent to " + feedOwnerId + ", user with userid " + userId + " and message " + message)
+        var FCM = require('fcm-node');
+        var serverKey = 'AIzaSyAimrKZDX2EMmDYt9-Q9chxB5Q7czij-VM'; //put your server key here 
+        var fcm = new FCM(serverKey);
+    
+        var message = { //this may vary according to the message type (single recipient, multicast, topic, et cetera) 
+            to: 'cgfaKQSW4BU:APA91bEEzi_L7mVv2ljxmQhjHgdu1boB3GAAosg8vU-1qRn1lgJ9ZswjBwTTKz2Nmw1B_6C7YroM4U9YjR-zMStR5EzkAC8YqNQjI3ij5DTlMwjWAGQRW3vGtVmT_z62TIaJRMaBRRWA', 
+            collapse_key: 'your_collapse_key',
+            
+            notification: {
+                title: message, 
+                body: feedOwnerId + message,
+                click_action : 'Take him to Notifications page'
+            },
+            
+            data: {  //you can send only notification or only data(or include both) 
+                my_key: 'my value',
+                my_another_key: 'my another value'
+            }
+        };
+        
+        fcm.send(message, function(err, response){
+            if (err) {
+                console.log("Something has gone wrong!");
+            } else {
+                console.log("Successfully sent with response: ", response);
+            }
+        });
     }
 }
