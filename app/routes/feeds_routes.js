@@ -492,7 +492,7 @@ module.exports = function (app, db) {
                             if (err) {
                                 console.log("error : " + err.errmsg)
                             } else {
-                                sendNotificationToUser(feedOwnerId, userId, "liked your feed")
+                                sendNotificationToUser(feedOwnerId, userName, "liked your feed", fcmToken)
                             }
                         });
                         break;
@@ -502,7 +502,7 @@ module.exports = function (app, db) {
                             if (err) {
                                 console.log("error : " + err.errmsg)
                             } else {
-                                console.log("User with id " + userId + " unliked your feed with id " + feedId)
+                                console.log("User with id " + userName + " unliked your feed with id " + feedId)
                             }
                         });
                         break;
@@ -512,7 +512,7 @@ module.exports = function (app, db) {
                             if (err) {
                                 console.log("error : " + err.errmsg)
                             } else {
-                                sendNotificationToUser(feedOwnerId, userId, "commented on your feed")
+                                sendNotificationToUser(feedOwnerId, userName, "commented on your feed", fcmToken)
                             }
                         });
                         break;
@@ -523,7 +523,8 @@ module.exports = function (app, db) {
         });
     }
 
-    var sendNotificationToUser = function (feedOwnerId, userId, message) {
-        console.log("Notification sent to " + feedOwnerId + ", user with userid " + userId + " and message " + message)
+    var sendNotificationToUser = function (feedOwnerId, userName, message, recieverId) {
+        const notificationService = require('../../services/fcm-notification.js')
+        notificationService.sendNotification(feedOwnerId, userName, message, recieverId)
     }
 }
