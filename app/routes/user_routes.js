@@ -80,6 +80,23 @@ module.exports = function (app, db) {
         });
     });
 
+    /* Set USER's device ids */
+    app.put('/users/addDevice', utils.isUserAuthenticated, (req, res) => {
+        if (req.body.fcmToken == null) {
+            res.send(utils.errorResponse('Token missing'));
+        } else {
+            const details = { '_id' : userId };
+            const updatedDeviceId = { $set: { deviceId : req.body.deviceId, fcmToken : req.body.fcmToken} };
+            db.collection('users').update(details, updatedDeviceId , (err, result) => {
+                if (err) {
+                    res.send(utils.errorResponse(err.errmsg));
+                } else {
+                    res.send(utils.successResponse('Subscribed for notification successfully', result))
+                }
+            });
+        }
+    });
+
     /* USER PROFILE */
     app.get('/users/profile', utils.isUserAuthenticated, (req, res) => {
         db.collection('users').findOne({ _id: userId }, (function (err, item) {
