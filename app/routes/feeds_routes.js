@@ -243,6 +243,8 @@ module.exports = function (app, db) {
             cursor.toArray(function (err, docs) {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
+                } else if (docs.length==0) {
+                    res.send(utils.errorResponse("No results found"));
                 } else {
                     var count = 0
                     var feedsLength = docs.length
