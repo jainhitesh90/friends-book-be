@@ -7,7 +7,58 @@ module.exports = function (app, db) {
     utils.setdatabase(db)
     var ObjectID = require('mongodb').ObjectID;
 
-    /* CREATE */
+    /* CREATE FEED (Admin)*/
+    app.post('/feed/admin/add', [utils.isAdminAuthenticated, upload.single('content')], (req, res) => {
+        if (req.body.feedType == 'event') {
+            if (req.body.title == null || req.body.title == '') {
+                res.send(utils.errorResponse('Title missing'));
+            } else if (req.body.description == null || req.body.description == '') {
+                res.send(utils.errorResponse('Description missing'));
+            } else if (req.body.venue == null || req.body.venue == '') {
+                res.send(utils.errorResponse('Venue missing'));
+            } else if (req.body.price == null || req.body.price == '') {
+                res.send(utils.errorResponse('Price missing'));
+            } else if (req.body.time == null || req.body.time == '') {
+                res.send(utils.errorResponse('Time missing'));
+            } else if (req.body.url == null || req.body.url == '') {
+                res.send(utils.errorResponse('Url missing'));
+            } else if (req.body.image == null || req.body.image == '') {
+                res.send(utils.errorResponse('Image URL missing'));
+            } else {
+                const event = { feedType: req.body.feedType, title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, image: req.body.image, createdAt: Date.now() };
+                db.collection('feeds').insert(event, (err, result) => {
+                    if (err) {
+                        res.send(utils.errorResponse(err.errmsg));
+                    } else {
+                        res.send(utils.successResponse(null, result.ops[0]))
+                    }
+                });
+            }
+        } else if (req.body.feedType == 'blog') {
+            if (req.body.title == null || req.body.title == '') {
+                res.send(utils.errorResponse('Title missing'));
+            } else if (req.body.description == null || req.body.description == '') {
+                res.send(utils.errorResponse('Description missing'));
+            } else if (req.body.fullUrl == null || req.body.fullUrl == '') {
+                res.send(utils.errorResponse('Full URL missing'));
+            } else if (req.body.image == null || req.body.image == '') {
+                res.send(utils.errorResponse('Image URL missing'));
+            } else {
+                const blog = { feedType: req.body.feedType, title: req.body.title, description: req.body.description, fullUrl: req.body.fullUrl, image: req.body.image, createdAt: Date.now() };
+                db.collection('feeds').insert(blog, (err, result) => {
+                    if (err) {
+                        res.send(utils.errorResponse(err.errmsg));
+                    } else {
+                        res.send(utils.successResponse(null, result.ops[0]))
+                    }
+                });
+            }
+        } else {
+            res.send(utils.errorResponse("Feed type invalid"));
+        }
+    });
+
+    /* CREATE (User)*/
     app.post('/feed/add', [utils.isUserAuthenticated, upload.single('content')], (req, res) => {
         var AWS = require('aws-sdk');
         AWS.config.loadFromPath('./config/aws-config.json');
@@ -198,24 +249,30 @@ module.exports = function (app, db) {
                     if (feedsLength > 0) {
                         for (i = 0; i < feedsLength; i++) {
                             /* Feed owner details */
-                            db.collection('users').aggregate([{
-                                $lookup: {
-                                    from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "feed_owner"
-                                }
-                            }], function (err, results) {
-                                if (err) {
-                                    res.send(utils.errorResponse(err.errmsg));
-                                } else {
-                                    var feedSection = {}
-                                    feedSection.name = results[0].name
-                                    feedSection.userId = results[0]._id
-                                    feedSection.image = results[0].image
-                                    docs[count].feedOwner = feedSection
-                                    count++
-                                    if (count == feedsLength)
-                                        res.send(utils.successResponse(null, docs))
-                                }
-                            });
+                            if (docs[i].userId != null) {
+                                db.collection('users').aggregate([{
+                                    $lookup: {
+                                        from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "feed_owner"
+                                    }
+                                }], function (err, results) {
+                                    if (err) {
+                                        res.send(utils.errorResponse(err.errmsg));
+                                    } else {
+                                        var feedSection = {}
+                                        feedSection.name = results[0].name
+                                        feedSection.userId = results[0]._id
+                                        feedSection.image = results[0].image
+                                        docs[count].feedOwner = feedSection
+                                        count++
+                                        if (count == feedsLength)
+                                            res.send(utils.successResponse(null, docs))
+                                    }
+                                });
+                            } else {
+                                count++
+                                if (count == feedsLength)
+                                    res.send(utils.successResponse(null, docs))
+                            }
                         }
                     }
                 }
@@ -235,44 +292,79 @@ module.exports = function (app, db) {
                 if (feedsLength > 0) {
                     for (i = 0; i < feedsLength; i++) {
                         /* Feed owner details */
-                        db.collection('users').aggregate([{
-                            $lookup: {
-                                from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "feed_owner"
-                            }
-                        }], function (err, results) {
-                            if (err) {
-                                res.send(utils.errorResponse(err.errmsg));
-                            } else {
-                                var feedSection = {}
-                                feedSection.name = results[0].name
-                                feedSection.userId = results[0]._id
-                                feedSection.image = results[0].image
-                                docs[count].feedOwner = feedSection
+                        if (docs[i].userId != null) {
+                            db.collection('users').aggregate([{
+                                $lookup: {
+                                    from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "feed_owner"
+                                }
+                            }], function (err, results) {
+                                if (err) {
+                                    res.send(utils.errorResponse(err.errmsg));
+                                } else {
+                                    var feedSection = {}
+                                    feedSection.name = results[0].name
+                                    feedSection.userId = results[0]._id
+                                    feedSection.image = results[0].image
+                                    docs[count].feedOwner = feedSection
 
-                                /* Coutng total likes */
-                                docs[count].likesCount = 0
-                                if (docs[count].likes != null && docs[count].likes.length > 0) {
-                                    docs[count].likesCount = docs[count].likes.length
-                                    if (docs[count].likes.indexOf(userId) != -1) {
-                                        docs[count].hasLiked = true
+                                    /* Coutng total likes */
+                                    docs[count].likesCount = 0
+                                    if (docs[count].likes != null && docs[count].likes.length > 0) {
+                                        docs[count].likesCount = docs[count].likes.length
+                                        if (docs[count].likes.indexOf(userId) != -1) {
+                                            docs[count].hasLiked = true
+                                        }
                                     }
-                                }
-                                /* Coutng total comments */
-                                docs[count].commentsCount = 0
-                                if (docs[count].comments != null && docs[count].comments.length > 0) {
-                                    docs[count].commentsCount = docs[count].comments.length
-                                }
+                                    /* Coutng total comments */
+                                    docs[count].commentsCount = 0
+                                    if (docs[count].comments != null && docs[count].comments.length > 0) {
+                                        docs[count].commentsCount = docs[count].comments.length
+                                    }
 
-                                count++
-
-                                if (count == feedsLength)
-                                    res.send(utils.successResponse(null, docs))
-                            }
-                        });
+                                    count++
+                                    if (count == feedsLength)
+                                        res.send(utils.successResponse(null, docs))
+                                }
+                            });
+                        } else {
+                            count++
+                            if (count == feedsLength)
+                                res.send(utils.successResponse(null, docs))
+                        }
                     }
                 }
             }
         });
+    });
+
+    /* READ Feed by list of ids */
+    app.get('/feed/list-by-id/:feedIds', utils.isUserAuthenticated, (req, res) => {
+        if (req.params.feedIds == null || req.params.feedIds.length == 0) {
+            res.send(utils.errorResponse("Feed ids missing"))
+        } else {
+            var feeds = []
+            var count = 0
+            var feedIds = JSON.parse(req.params.feedIds)
+            var feedIdLength = feedIds.length
+            for (i = 0; i < feedIdLength; i++) {
+                const id = feedIds[i];
+                const details = { '_id': new ObjectID(id) };
+                db.collection('feeds').findOne(details, (err, item) => {
+                    if (err) {
+                        count++
+                        console.log("error fetching feed : " + err.errmsg)
+                    } else if (item == null) {
+                        count++
+                        console.log("feed not found " )
+                    } else {
+                        feeds.push(item)
+                        count++
+                        if (count == feedIdLength)
+                            res.send(utils.successResponse('Feeds', feeds))
+                    }
+                });
+            }
+        }
     });
 
     /* Like a Feed */
@@ -365,7 +457,7 @@ module.exports = function (app, db) {
                                 if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
                                     combinedResults.commentsList = commentsList
                                     combinedResults.likesList = likesList
-                                    res.send(utils.successResponse("yo", combinedResults))
+                                    res.send(utils.successResponse(null, combinedResults))
                                 }
                             }
                         });

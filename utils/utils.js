@@ -47,7 +47,7 @@ module.exports = {
             var authToken = req.get('authToken')
             database.collection('users').findOne({ authToken: req.get('authToken') }, (function (err, item) {
                 if (err) {
-                    res.send(module.exports.errorResponse("Token invalid"));
+                    res.send(module.exports.errorResponse(err.errorMsg));
                 } else if (item != null) {
                     userId = item._id
                     userName = item.name
