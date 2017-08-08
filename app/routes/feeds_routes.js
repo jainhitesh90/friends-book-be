@@ -39,12 +39,12 @@ module.exports = function (app, db) {
                 res.send(utils.errorResponse('Title missing'));
             } else if (req.body.description == null || req.body.description == '') {
                 res.send(utils.errorResponse('Description missing'));
-            } else if (req.body.fullUrl == null || req.body.fullUrl == '') {
+            } else if (req.body.url == null || req.body.url == '') {
                 res.send(utils.errorResponse('Full URL missing'));
             } else if (req.body.image == null || req.body.image == '') {
                 res.send(utils.errorResponse('Image URL missing'));
             } else {
-                const blog = { feedType: req.body.feedType, title: req.body.title, description: req.body.description, fullUrl: req.body.fullUrl, image: req.body.image, createdAt: Date.now() };
+                const blog = { feedType: req.body.feedType, title: req.body.title, description: req.body.description, url: req.body.url, image: req.body.image, createdAt: Date.now() };
                 db.collection('feeds').insert(blog, (err, result) => {
                     if (err) {
                         res.send(utils.errorResponse(err.errmsg));
@@ -67,10 +67,10 @@ module.exports = function (app, db) {
         var fs = require('fs');
         var file = req.file;
         if (req.body.feedType == 'post') {
-            if (req.body.description == null || req.body.description == '') {
+            if (req.body.title == null || req.body.title == '') {
                 res.send(utils.errorResponse('Describe your feed'))
             } else if (file == null || file.path == null) {
-                const feed = { feedType: req.body.feedType, userId: userId, description: req.body.description, createdAt: Date.now() };
+                const feed = { feedType: req.body.feedType, userId: userId, title: req.body.title, createdAt: Date.now() };
                 db.collection('feeds').insert(feed, (err, result) => {
                     if (err) {
                         res.send(utils.errorResponse(err.errmsg));
@@ -137,12 +137,12 @@ module.exports = function (app, db) {
                 res.send(utils.errorResponse('Title missing'));
             } else if (req.body.description == null || req.body.description == '') {
                 res.send(utils.errorResponse('Description missing'));
-            } else if (req.body.fullUrl == null || req.body.fullUrl == '') {
+            } else if (req.body.url == null || req.body.url == '') {
                 res.send(utils.errorResponse('Full URL missing'));
             } else if (req.body.image == null || req.body.image == '') {
                 res.send(utils.errorResponse('Image URL missing'));
             } else {
-                const blog = { feedType: req.body.feedType, userId: userId, title: req.body.title, description: req.body.description, fullUrl: req.body.fullUrl, image: req.body.image, createdAt: Date.now() };
+                const blog = { feedType: req.body.feedType, userId: userId, title: req.body.title, description: req.body.description, url: req.body.url, image: req.body.image, createdAt: Date.now() };
                 db.collection('feeds').insert(blog, (err, result) => {
                     if (err) {
                         res.send(utils.errorResponse(err.errmsg));
@@ -193,12 +193,12 @@ module.exports = function (app, db) {
                     res.send(utils.errorResponse('Title missing'));
                 } else if (req.body.description == null || req.body.description == '') {
                     res.send(utils.errorResponse('Description missing'));
-                } else if (req.body.fullUrl == null || req.body.fullUrl == '') {
+                } else if (req.body.url == null || req.body.url == '') {
                     res.send(utils.errorResponse('Full URL missing'));
                 } else if (req.body.image == null || req.body.image == '') {
                     res.send(utils.errorResponse('Image URL missing'));
                 } else {
-                    updatedDoc = { $set: { title: req.body.title, description: req.body.description, fullUrl: req.body.fullUrl, image: req.body.image, updatedAt: Date.now() } };
+                    updatedDoc = { $set: { title: req.body.title, description: req.body.description, url: req.body.url, image: req.body.image, updatedAt: Date.now() } };
                 }
             }
             db.collection('feeds').update(details, updatedDoc, (err, result) => {
@@ -285,7 +285,7 @@ module.exports = function (app, db) {
     /* READ ALL */
     app.get('/feed/list', utils.isUserAuthenticated, (req, res) => {
         var count = 0;
-        var cursor = db.collection('feeds').find({});
+        var cursor = db.collection('feeds').find().sort({'createdAt' : -1});
         cursor.toArray(function (err, docs) {
             if (err) {
                 res.send(utils.errorResponse(err.errmsg));

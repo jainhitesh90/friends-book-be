@@ -37,11 +37,11 @@ MongoClient.connect(credentials.url, (err, database) => {
 
     /* blogs collection */
     database.createCollection('blogs')
-    database.collection('blogs').ensureIndex({ fullUrl: 1 }, { unique: true });
+    database.collection('blogs').ensureIndex({ url: 1 }, { unique: true });
 
     /* events collection */
     database.createCollection('events')
-    database.collection('events').ensureIndex({ fullUrl: 1 }, { unique: true });
+    database.collection('events').ensureIndex({ url: 1 }, { unique: true });
 
     /* notifications collection */
     database.createCollection('notifications')
