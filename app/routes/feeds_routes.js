@@ -596,9 +596,7 @@ module.exports = function (app, db) {
                         db.collection('notifications').remove(notificationUnlike, (err, item) => {
                             if (err) {
                                 console.log("error : " + err.errmsg)
-                            } else {
-                                console.log("User with id " + userName + " unliked your feed with id " + feedId)
-                            }
+                            } 
                         });
                         break;
                     case constants.comment:

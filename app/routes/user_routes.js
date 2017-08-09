@@ -147,7 +147,15 @@ module.exports = function (app, db) {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    res.send(utils.successResponse('Friend added', result))
+                    const OtherDetails = { '_id': req.body._id };
+                    const pendingFriendRequest = { _id: userId };
+                    db.collection('users').update(OtherDetails, { "$push": { pendingFriendList: pendingFriendRequest } }, (err, result) => {
+                        if (err) {
+                            res.send(utils.errorResponse(err.errmsg));
+                        } else {
+                            res.send(utils.successResponse('Friend request sent', result))
+                        }
+                    });
                 }
             });
         }
@@ -167,26 +175,35 @@ module.exports = function (app, db) {
                 } else {
                     var friendList = item.usersFriendList
                     var count = 0
-                    if (item.usersFriendList != null && item.usersFriendList.length > 0) {
-                        for (var i = 0; i < item.usersFriendList.length; i++) {
-                            if (item.usersFriendList[i]['_id'] == req.body._id && item.usersFriendList[i]['status'] == 'Request Sent') {
-                                db.collection('users').update(details, { "$pull": { usersFriendList: friendRequestOldState } }, (err, result) => {
+                    /* Remove from my pendingFriendList */
+                    const pendingRequest = { _id: req.body._id};
+                    var pos = item.pendingFriendList.map(function (e) { return e._id; }).indexOf(req.body._id);
+                    if (pos != -1) {
+                        db.collection('users').update(details, { "$pull" : { pendingFriendList: pendingRequest } }, (err, result) => {
+                            if (err) {
+                                res.send(utils.errorResponse(err.errmsg));
+                            } else {
+                                /* Remove from other persons usersFriendList */
+                                const requestSender = { '_id' : req.body._id };
+                                const requestReciever = { '_id' : userId };
+                                db.collection('users').update(requestSender, { "$pull": { usersFriendList: friendRequestOldState } }, (err, result) => {
                                     if (err) {
                                         res.send(utils.errorResponse(err.errmsg));
                                     } else {
-                                        db.collection('users').update(details, { "$push": { usersFriendList: friendRequestUpdate } }, (err, result) => {
+                                        /* Add into my usersFriendList as Friends status */
+                                        db.collection('users').update(requestReciever, { "$push": { usersFriendList: friendRequestUpdate } }, (err, result) => {
                                             if (err) {
                                                 res.send(utils.errorResponse(err.errmsg));
                                             } else {
-                                                res.send(utils.successResponse('Friend Request added', result))
+                                                res.send(utils.successResponse('Friend Request accepted', result))
                                             }
                                         });
                                     }
                                 });
                             }
-                        }
+                        });
                     } else {
-                        res.send(utils.successResponse("Friend request not found", friendList))
+                        res.send(utils.errorResponse("Id not found in pendingFriendList"));
                     }
                 }
             }));
@@ -233,7 +250,34 @@ module.exports = function (app, db) {
             if (err) {
                 res.send(utils.errorResponse(err.errmsg));
             } else {
-                res.send(utils.successResponse("Yeh le profile", item))
+                var pendingFriends = []
+                if (item.pendingFriendList != null && item.pendingFriendList.length > 0) {
+                    for (var m = 0; m < item.pendingFriendList.length; m++) {
+                        var count = 0
+                        db.collection('users').findOne({ _id: item.pendingFriendList[count]['_id'] }, (function (err, doc) {
+                            if (err) {
+                                count++
+                                console.log(err.errmsg);
+                            } else if (doc == null) {
+                                count++
+                                console.log("not found");
+                            } else {
+                                var pending = {}
+                                pending.name = doc.name
+                                pending._id = doc._id
+                                pending.image = doc.image
+                                pendingFriends.push(pending)
+                                count++
+                            }
+                            if (count == item.pendingFriendList.length) {
+                                item.pendingFriends = pendingFriends
+                                res.send(utils.successResponse("Yeh le profile", item))
+                            }
+                        }));
+                    }
+                } else {
+                    res.send(utils.successResponse("Yeh le profile", item))
+                }
             }
         }));
     });
