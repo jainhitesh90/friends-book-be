@@ -285,7 +285,8 @@ module.exports = function (app, db) {
     /* READ ALL */
     app.get('/feed/list', utils.isUserAuthenticated, (req, res) => {
         var count = 0;
-        var cursor = db.collection('feeds').find().sort({'createdAt' : -1});
+        //var cursor = db.collection('feeds').find().sort({'createdAt' : -1});
+        var cursor = db.collection('feeds').find();
         cursor.toArray(function (err, docs) {
             if (err) {
                 res.send(utils.errorResponse(err.errmsg));

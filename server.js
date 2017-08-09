@@ -35,14 +35,6 @@ MongoClient.connect(credentials.url, (err, database) => {
     database.createCollection('users')
     database.collection('users').ensureIndex({ email: 1 }, { unique: true });
 
-    /* blogs collection */
-    database.createCollection('blogs')
-    database.collection('blogs').ensureIndex({ url: 1 }, { unique: true });
-
-    /* events collection */
-    database.createCollection('events')
-    database.collection('events').ensureIndex({ url: 1 }, { unique: true });
-
     /* notifications collection */
     database.createCollection('notifications')
 
