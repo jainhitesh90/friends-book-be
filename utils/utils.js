@@ -52,7 +52,7 @@ module.exports = {
                     userId = item._id
                     userName = item.name
                     fcmToken = item.fcmToken
-                    usersFriendList = item.usersFriendList
+                    friends = item.friends
                     return next();
                 } else {
                     res.send(module.exports.errorResponse("Token Invalid"));

@@ -19,7 +19,7 @@ module.exports = function (app, db) {
             res.send(utils.errorResponse('UID missing'));
         } else {
             var userObject = {
-                email: req.body.email, name: req.body.name, image: req.body.image, provider: req.body.provider, token: req.body.token, uid: req.body.uid, usersFriendList: []
+                email: req.body.email, name: req.body.name, image: req.body.image, provider: req.body.provider, token: req.body.token, uid: req.body.uid
             };
             var cursor = db.collection('users').find({ email: req.body.email, provider: req.body.provider });
             cursor.toArray(function (err, docs) {
@@ -48,13 +48,30 @@ module.exports = function (app, db) {
                                         /* validate facebook token and id */
                                         if (req.body.provider == 'facebook') {
                                             request("https://graph.facebook.com/me?access_token=" + req.body.token, function (error, response, body) {
-                                                if (!error && response.statusCode == 200 && req.body.uid == JSON.parse(response.body).id)
-                                                    res.send(utils.successResponse('Profile created!!', result.ops[0]))
+                                                if (!error && response.statusCode == 200 && req.body.uid == JSON.parse(response.body).id) {
+                                                    /* create empty friends row for this user */
+                                                    const friend = { _id: doc.value.lastUserId, friendList: [] };
+                                                    db.collection('friends').insert(friend, (err, friendResult) => {
+                                                        if (err) {
+                                                            res.send(utils.errorResponse(err.errmsg));
+                                                        } else {
+                                                            res.send(utils.successResponse('Profile created!!', result.ops[0]))
+                                                        }
+                                                    });
+                                                }
                                                 else
                                                     res.send(utils.errorResponse("Invalid facebook token"))
                                             })
                                         } else {
-                                            res.send(utils.successResponse('Profile created!!', result.ops[0]))
+                                            /* create empty friends row for this user */
+                                            const friend = { _id: doc.value.lastUserId, friendList: [] };
+                                            db.collection('friends').insert(friend, (err, friendResult) => {
+                                                if (err) {
+                                                    res.send(utils.errorResponse(err.errmsg));
+                                                } else {
+                                                    res.send(utils.successResponse('Profile created!!', result.ops[0]))
+                                                }
+                                            });
                                         }
                                     }
                                 });
@@ -80,14 +97,11 @@ module.exports = function (app, db) {
                 if (docs.length > 0) {
                     for (var i = 0; i < docs.length; i++) {
                         if (docs[i]._id != userId) {
-                            var pos = usersFriendList.map(function (e) { return e._id; }).indexOf(docs[i]._id);
-                            if (pos == -1) {
-                                var userData = {}
-                                userData._id = docs[i]._id
-                                userData.name = docs[i].name
-                                userData.image = docs[i].image
-                                users.push(userData)
-                            }
+                            var userData = {}
+                            userData._id = docs[i]._id
+                            userData.name = docs[i].name
+                            userData.image = docs[i].image
+                            users.push(userData)
                         }
                         count++
                         if (count == docs.length) /* Except users own id and his own friends */
@@ -98,133 +112,6 @@ module.exports = function (app, db) {
                 }
             }
         });
-    });
-
-    /* User's friend */
-    app.get('/users/friends', utils.isUserAuthenticated, (req, res) => {
-        db.collection('users').findOne({ _id: userId }, (function (err, item) {
-            if (err) {
-                res.send(utils.errorResponse(err.errmsg));
-            } else {
-                var friendList = []
-                var count = 0
-                if (item.usersFriendList != null && item.usersFriendList.length > 0) {
-                    for (var i = 0; i < item.usersFriendList.length; i++) {
-                        db.collection('users').findOne({ _id: item.usersFriendList[i]['_id'] }, (function (err, user) {
-                            if (err) {
-                                console.log("error : " + err.errmsg)
-                                count++
-                            } else if (user == null) {
-                                count++
-                            } else {
-                                var userData = {}
-                                userData._id = user._id
-                                userData.name = user.name
-                                userData.image = user.image
-                                userData.friendStatus = item.usersFriendList[count]['status']
-                                friendList.push(userData)
-                                count++
-                            }
-                            if (count == item.usersFriendList.length)
-                                res.send(utils.successResponse("Yeh le tere friends ", friendList))
-                        }));
-                    }
-                } else {
-                    res.send(utils.successResponse("You have no friends ", friendList))
-                }
-            }
-        }));
-    });
-
-    /* Add Friend */
-    app.put('/user/addFriend', utils.isUserAuthenticated, (req, res) => {
-        if (req.body._id == null || req.body._id == '') {
-            res.send(utils.errorResponse('Id missing'));
-        } else {
-            const details = { '_id': userId };
-            const friendRequest = { _id: req.body._id, status: 'Request Sent' };
-            db.collection('users').update(details, { "$push": { usersFriendList: friendRequest } }, (err, result) => {
-                if (err) {
-                    res.send(utils.errorResponse(err.errmsg));
-                } else {
-                    const OtherDetails = { '_id': req.body._id };
-                    const pendingFriendRequest = { _id: userId };
-                    db.collection('users').update(OtherDetails, { "$push": { pendingFriendList: pendingFriendRequest } }, (err, result) => {
-                        if (err) {
-                            res.send(utils.errorResponse(err.errmsg));
-                        } else {
-                            res.send(utils.successResponse('Friend request sent', result))
-                        }
-                    });
-                }
-            });
-        }
-    });
-
-    /* Accept Friend */
-    app.put('/user/acceptFriend', utils.isUserAuthenticated, (req, res) => {
-        if (req.body._id == null || req.body._id == '') {
-            res.send(utils.errorResponse('Id missing'));
-        } else {
-            const details = { '_id': userId };
-            const friendRequestOldState = { _id: req.body._id, status: 'Request Sent' };
-            const friendRequestUpdate = { _id: req.body._id, status: 'Friends' };
-            db.collection('users').findOne({ _id: userId }, (function (err, item) {
-                if (err) {
-                    res.send(utils.errorResponse(err.errmsg));
-                } else {
-                    var friendList = item.usersFriendList
-                    var count = 0
-                    /* Remove from my pendingFriendList */
-                    const pendingRequest = { _id: req.body._id};
-                    var pos = item.pendingFriendList.map(function (e) { return e._id; }).indexOf(req.body._id);
-                    if (pos != -1) {
-                        db.collection('users').update(details, { "$pull" : { pendingFriendList: pendingRequest } }, (err, result) => {
-                            if (err) {
-                                res.send(utils.errorResponse(err.errmsg));
-                            } else {
-                                /* Remove from other persons usersFriendList */
-                                const requestSender = { '_id' : req.body._id };
-                                const requestReciever = { '_id' : userId };
-                                db.collection('users').update(requestSender, { "$pull": { usersFriendList: friendRequestOldState } }, (err, result) => {
-                                    if (err) {
-                                        res.send(utils.errorResponse(err.errmsg));
-                                    } else {
-                                        /* Add into my usersFriendList as Friends status */
-                                        db.collection('users').update(requestReciever, { "$push": { usersFriendList: friendRequestUpdate } }, (err, result) => {
-                                            if (err) {
-                                                res.send(utils.errorResponse(err.errmsg));
-                                            } else {
-                                                res.send(utils.successResponse('Friend Request accepted', result))
-                                            }
-                                        });
-                                    }
-                                });
-                            }
-                        });
-                    } else {
-                        res.send(utils.errorResponse("Id not found in pendingFriendList"));
-                    }
-                }
-            }));
-        }
-    });
-
-    /* Remove Friend */
-    app.put('/user/unFriend', utils.isUserAuthenticated, (req, res) => {
-        if (req.body._id == null || req.body._id == '') {
-            res.send(utils.errorResponse('Id missing'));
-        } else {
-            const details = { '_id': userId };
-            const friendRequestOldState = { _id: req.body._id, status: 'Request Sent' };
-            db.collection('users').update(details, { "$pull": { usersFriendList: friendRequestOldState } }, (err, result) => {
-                if (err) {
-                    res.send(utils.errorResponse(err.errmsg));
-                } else {
-                    res.send(utils.successResponse('Friend removed', result))
-                }
-            });
-        }
     });
 
     /* Set USER's device ids */

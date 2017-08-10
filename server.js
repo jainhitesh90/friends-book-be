@@ -22,7 +22,7 @@ MongoClient.connect(credentials.url, (err, database) => {
   if (err) return console.log(err)
   require('./app/routes')(app, database);
   app.listen(port, () => {
-    console.log('We are live on ' + port);
+    console.log('Yo man, wee are live on ' + port);
 
     /* admin collection */
     database.createCollection('admin')
@@ -34,6 +34,10 @@ MongoClient.connect(credentials.url, (err, database) => {
     /* user collection */
     database.createCollection('users')
     database.collection('users').ensureIndex({ email: 1 }, { unique: true });
+
+    /* friends collection */
+    database.createCollection('friends')
+    database.collection('friends').ensureIndex({ _id : 1 }, { unique: true });
 
     /* notifications collection */
     database.createCollection('notifications')
