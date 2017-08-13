@@ -20,7 +20,7 @@ module.exports = function (app, db) {
                         if (err) {
                             res.send(utils.errorResponse(err.errmsg));
                         } else {
-                            sendNotificationToUserNew(req.body.id, userName + " " + constants.frnd_req_sent, 'http://localhost:3000/home/friends');
+                            sendNotificationToUser(req.body.id, userName + " " + constants.frnd_req_sent, constants.activity_frnd_req_sent, 'http://localhost:3000/home/friends');
                             res.send(utils.successResponse('Friend request sent successfully', null))
                         }
                     });
@@ -118,7 +118,7 @@ module.exports = function (app, db) {
                                                 if (err) {
                                                     res.send(utils.errorResponse(err.errmsg));
                                                 } else {
-                                                    sendNotificationToUserNew(req.body.id, userName + " " + constants.frnd_req_accepted, 'http://localhost:3000/home/friends');
+                                                    sendNotificationToUser(req.body.id, userName + " " + 'http://localhost:3000/home/friends');
                                                     res.send(utils.successResponse("We are now friends", null))
                                                 }
                                             });
@@ -174,7 +174,7 @@ module.exports = function (app, db) {
         });
     });
 
-    var sendNotificationToUserNew = function (userId, content, redirectUrl) {
+    var sendNotificationToUser = function (userId, content,activity, redirectUrl) {
         db.collection('users').findOne({ _id : userId }, (function (err, item) {
             if (err) {
                 console.log(err.errmsg)
@@ -184,7 +184,7 @@ module.exports = function (app, db) {
                 var id = item._id
                 var fcmToken = item.fcmToken
                 const notificationService = require('../../services/fcm-notification.js')
-                notificationService.updateNotificationDocument(db, id, fcmToken, content, redirectUrl)
+                notificationService.updateNotificationDocument(db, id, fcmToken, content, activity, redirectUrl)
             }
         }));
     }

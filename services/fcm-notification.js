@@ -1,8 +1,8 @@
 const credentials = require('../config/credentials.js')
 
 module.exports = {
-    updateNotificationDocument : function(db, id, fcmToken, content, redirectUrl){
-        const notification = { userId : id, content: content, redirectUrl : redirectUrl, createdAt: Date.now() };
+    updateNotificationDocument : function(db, id, fcmToken, content, activity, redirectUrl){
+        const notification = { userId : id, content: content, activity : activity, redirectUrl : redirectUrl, createdAt: Date.now() };
         db.collection('notifications').insert(notification, (err, result) => {
             if (err) {
                 console.log("error : " + err.errmsg)

@@ -293,19 +293,16 @@ module.exports = function (app, db) {
                 var feedsLength = docs.length
                 if (feedsLength > 0) {
                     for (i = 0; i < feedsLength; i++) {
-                        console.log("docs[i].userId : " + docs[i].userId)
                         /* Feed owner details */
                         if (docs[i].userId != null) {
                             db.collection('users').findOne({ _id: Number(docs[i].userId) }, (function (err, item) {
                                 if (err) {
                                     res.send(utils.errorResponse(err.errmsg));
                                 } else {
-                                    console.log("item : " + item.name)
                                     var feedSection = {}
                                     feedSection.name = item.name
                                     feedSection.userId = item._id
                                     feedSection.image = item.image
-                                    console.log("count : " + count)
                                     docs[count].feedOwner = feedSection
 
                                     /* Coutng total likes */
@@ -381,7 +378,7 @@ module.exports = function (app, db) {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    updateNotifications(req.params.id, userId, constants.like)
+                    sendNotificationToUser(req.params.id, userName + " " + constants.like, 'http://localhost:3000/home/feed?id=' + req.params.id);
                     res.send(utils.successResponse('Feed liked successfully', result))
                 }
             });
@@ -399,7 +396,6 @@ module.exports = function (app, db) {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    updateNotifications(req.params.id, userId, constants.unlike)
                     res.send(utils.successResponse('Feed like removed successfully', result))
                 }
             });
@@ -419,7 +415,7 @@ module.exports = function (app, db) {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    updateNotifications(req.params.id, userId, constants.comment)
+                    sendNotificationToUser(req.params.id, userName + " " + constants.comment, 'http://localhost:3000/home/feed?id=' + req.params.id);
                     res.send(utils.successResponse('Commented successfully on feed', result))
                 }
             });
@@ -440,6 +436,7 @@ module.exports = function (app, db) {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
+                    var count1 = 0, count2 = 0
                     var commentArrayLength = item['comments'].length
                     for (i = 0; i < commentArrayLength; i++) {
                         commentText.push(item['comments'][i].comment)
@@ -452,11 +449,11 @@ module.exports = function (app, db) {
                                 res.send(utils.errorResponse(err.errmsg));
                             } else {
                                 var commentSection = {}
-                                commentSection.name = results[0].name
-                                commentSection.image = results[0].image
-                                commentSection.content = commentText[count]
+                                commentSection.name = results[count1].name
+                                commentSection.image = results[count1].image
+                                commentSection.content = commentText[count1]
                                 commentsList.push(commentSection);
-                                count++
+                                count1++
                                 if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
                                     combinedResults.commentsList = commentsList
                                     combinedResults.likesList = likesList
@@ -477,9 +474,10 @@ module.exports = function (app, db) {
                                 res.send(utils.errorResponse(err.errmsg));
                             } else {
                                 var likeSection = {}
-                                likeSection.name = results[0].name
-                                likeSection.image = results[0].image
+                                likeSection.name = results[count2].name
+                                likeSection.image = results[count2].image
                                 likesList.push(likeSection);
+                                count2++
                                 if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
                                     combinedResults.commentsList = commentsList
                                     combinedResults.likesList = likesList
@@ -610,50 +608,29 @@ module.exports = function (app, db) {
         }
     });
 
-    var updateNotifications = function (feedId, userId, activity) {
+    var sendNotificationToUser = function (feedId, content, redirectUrl) {
+        /* get user id from feed */
         const details = { '_id': new ObjectID(feedId) };
-        db.collection('feeds').findOne(details, (err, item) => {
+        db.collection('feeds').findOne(details, (function (err, item) {
             if (err) {
-            } else if (item != null && item.userId != null) {
-                var feedOwnerId = item.userId
-                switch (activity) {
-                    case constants.like:
-                        const notificationLike = { feedId: feedId, feedOwnerId: feedOwnerId, userId: userId, activity: activity, createdAt: Date.now() };
-                        db.collection('notifications').insert(notificationLike, (err, result) => {
-                            if (err) {
-                                console.log("error : " + err.errmsg)
-                            } else {
-                                sendNotificationToUser(feedOwnerId, userName, "liked your feed", fcmToken)
-                            }
-                        });
-                        break;
-                    case constants.unlike:
-                        const notificationUnlike = { feedId: feedId, feedOwnerId: feedOwnerId, userId: userId, activity: constants.like };
-                        db.collection('notifications').remove(notificationUnlike, (err, item) => {
-                            if (err) {
-                                console.log("error : " + err.errmsg)
-                            }
-                        });
-                        break;
-                    case constants.comment:
-                        const notificationComment = { feedId: feedId, feedOwnerId: feedOwnerId, userId: userId, activity: activity, createdAt: Date.now() };
-                        db.collection('notifications').insert(notificationComment, (err, result) => {
-                            if (err) {
-                                console.log("error : " + err.errmsg)
-                            } else {
-                                sendNotificationToUser(feedOwnerId, userName, "commented on your feed", fcmToken)
-                            }
-                        });
-                        break;
-                    default:
-                        console.log("Something went wrong")
-                }
+                console.log(err.errmsg)
+            } else if (item == null) {
+                console.log("User not found")
+            } else {
+                var id = item.userId
+                /* get fcm token from user */
+                db.collection('users').findOne({ _id : id }, (function (err, item) {
+                    if (err) {
+                        console.log(err.errmsg)
+                    } else if (item == null) {
+                        console.log("User not found")
+                    } else {
+                        var fcmToken = item.fcmToken
+                        const notificationService = require('../../services/fcm-notification.js')
+                        notificationService.updateNotificationDocument(db, id, fcmToken, content, redirectUrl)
+                    }
+                }));
             }
-        });
-    }
-
-    var sendNotificationToUser = function (feedOwnerId, userName, message, recieverId) {
-        const notificationService = require('../../services/fcm-notification.js')
-        notificationService.sendNotification(feedOwnerId, userName, message, recieverId)
+        }));
     }
 }
