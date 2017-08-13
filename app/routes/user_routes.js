@@ -137,34 +137,7 @@ module.exports = function (app, db) {
             if (err) {
                 res.send(utils.errorResponse(err.errmsg));
             } else {
-                var pendingFriends = []
-                if (item.pendingFriendList != null && item.pendingFriendList.length > 0) {
-                    for (var m = 0; m < item.pendingFriendList.length; m++) {
-                        var count = 0
-                        db.collection('users').findOne({ _id: item.pendingFriendList[count]['_id'] }, (function (err, doc) {
-                            if (err) {
-                                count++
-                                console.log(err.errmsg);
-                            } else if (doc == null) {
-                                count++
-                                console.log("not found");
-                            } else {
-                                var pending = {}
-                                pending.name = doc.name
-                                pending._id = doc._id
-                                pending.image = doc.image
-                                pendingFriends.push(pending)
-                                count++
-                            }
-                            if (count == item.pendingFriendList.length) {
-                                item.pendingFriends = pendingFriends
-                                res.send(utils.successResponse("Yeh le profile", item))
-                            }
-                        }));
-                    }
-                } else {
-                    res.send(utils.successResponse("Yeh le profile", item))
-                }
+                res.send(utils.successResponse("Yeh le profile", item))
             }
         }));
     });
@@ -186,43 +159,12 @@ module.exports = function (app, db) {
 
     /* USER NOTIFICATIONS */
     app.get('/users/notifications', utils.isUserAuthenticated, (req, res) => {
-        var notificationList = [], activityText = [], feedId = [], time = []
-        var count = 0
-        var cursor = db.collection('notifications').find({ feedOwnerId: userId });
+        var cursor = db.collection('notifications').find({ userId : userId });
         cursor.toArray(function (err, docs) {
             if (err) {
                 res.send(utils.errorResponse(err.errmsg));
             } else {
-                var notificationListLength = docs.length
-                if (notificationListLength == 0) {
-                    res.send(utils.successResponse("Notification response", notificationList))
-                } else {
-                    for (i = 0; i < notificationListLength; i++) {
-                        activityText.push(docs[i].activity)
-                        feedId.push(docs[i].feedId)
-                        time.push(docs[i].createdAt)
-                        db.collection('users').aggregate([{
-                            $lookup: {
-                                from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "feed_comments"
-                            }
-                        }], function (err, results) {
-                            if (err) {
-                                res.send(utils.errorResponse(err.errmsg));
-                            } else {
-                                var notificationSection = {}
-                                notificationSection.name = results[0].name
-                                notificationSection.feedId = feedId[count]
-                                notificationSection.time = time[count]
-                                notificationSection.activity = activityText[count]
-                                notificationList.push(notificationSection);
-                                count++
-                                if (notificationList.length == notificationListLength) {
-                                    res.send(utils.successResponse("Notification response", notificationList))
-                                }
-                            }
-                        });
-                    }
-                }
+                res.send(utils.successResponse("Notification response", docs))
             }
         });
     });

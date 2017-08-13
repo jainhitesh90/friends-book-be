@@ -1,15 +1,28 @@
 const credentials = require('../config/credentials.js')
 
 module.exports = {
-    sendNotification: function (feedOwnerId, userName, message, feedOwnerDeviceId) {
+    updateNotificationDocument : function(db, id, fcmToken, content, redirectUrl){
+        const notification = { userId : id, content: content, redirectUrl : redirectUrl, createdAt: Date.now() };
+        db.collection('notifications').insert(notification, (err, result) => {
+            if (err) {
+                console.log("error : " + err.errmsg)
+            } else {
+                if (fcmToken != null)
+                    module.exports.sendNotification(content, redirectUrl, fcmToken)
+                else
+                    console.log("user dint registered for notifications")
+            }
+        });
+    },
+
+    sendNotification: function (content, redirectUrl, fcmToken) {
         var FCM = require('fcm-node');
         var fcm = new FCM(credentials.fcmServerKey);
-
         var message = {
-            to: feedOwnerDeviceId, 
+            to: fcmToken, 
             collapse_key: 'your_collapse_key',
             notification: {
-                title: message, body: userName + " " + message, click_action: 'Take him to Notifications page'
+                title: message, body: content, redirectUrl : redirectUrl, click_action: 'Take him to Notifications page'
             }
         };
 

@@ -1,4 +1,5 @@
 const utils = require('../../utils/utils.js')
+const constants = require('../../utils/constants.js')
 
 module.exports = function (app, db) {
     utils.setdatabase(db)
@@ -19,6 +20,7 @@ module.exports = function (app, db) {
                         if (err) {
                             res.send(utils.errorResponse(err.errmsg));
                         } else {
+                            sendNotificationToUserNew(req.body.id, userName + " " + constants.frnd_req_sent, 'http://localhost:3000/home/friends');
                             res.send(utils.successResponse('Friend request sent successfully', null))
                         }
                     });
@@ -81,7 +83,7 @@ module.exports = function (app, db) {
         }
     });
 
-    /* Un-Friend */
+    /* Accept Friend Request */
     app.post('/friend/accept-request', utils.isUserAuthenticated, (req, res) => {
         if (req.body.id == null || req.body.id == '') {
             res.send(utils.errorResponse('Id missing'));
@@ -109,13 +111,14 @@ module.exports = function (app, db) {
                                         res.send(utils.errorResponse("Friend not found 1"));
                                     } else {
                                         var pos = item.friendList.map(function (e) { return e._id; }).indexOf(userId);
-                                         if (pos != -1 && item.friendList[pos].status == 'Sent') {
+                                        if (pos != -1 && item.friendList[pos].status == 'Sent') {
                                             item.friendList[pos].status = 'Friends'
                                             updatedDoc = { $set: { friendList: item.friendList } };
                                             db.collection('friends').update({ _id: req.body.id }, updatedDoc, (err, result) => {
                                                 if (err) {
                                                     res.send(utils.errorResponse(err.errmsg));
                                                 } else {
+                                                    sendNotificationToUserNew(req.body.id, userName + " " + constants.frnd_req_accepted, 'http://localhost:3000/home/friends');
                                                     res.send(utils.successResponse("We are now friends", null))
                                                 }
                                             });
@@ -145,7 +148,7 @@ module.exports = function (app, db) {
                 var count = 0
                 if (item.friendList != null && item.friendList.length > 0) {
                     for (var i = 0; i < item.friendList.length; i++) {
-                        db.collection('users').findOne({ _id : item.friendList[i]['_id'] }, (function (err, user) {
+                        db.collection('users').findOne({ _id: item.friendList[i]['_id'] }, (function (err, user) {
                             if (err) {
                                 console.log("error : " + err.errmsg)
                                 count++
@@ -170,4 +173,19 @@ module.exports = function (app, db) {
             }
         });
     });
+
+    var sendNotificationToUserNew = function (userId, content, redirectUrl) {
+        db.collection('users').findOne({ _id : userId }, (function (err, item) {
+            if (err) {
+                console.log(err.errmsg)
+            } else if (item == null) {
+                console.log("User not found")
+            } else {
+                var id = item._id
+                var fcmToken = item.fcmToken
+                const notificationService = require('../../services/fcm-notification.js')
+                notificationService.updateNotificationDocument(db, id, fcmToken, content, redirectUrl)
+            }
+        }));
+    }
 };

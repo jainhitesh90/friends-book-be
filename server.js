@@ -22,7 +22,7 @@ MongoClient.connect(credentials.url, (err, database) => {
   if (err) return console.log(err)
   require('./app/routes')(app, database);
   app.listen(port, () => {
-    console.log('Yo man, wee are live on ' + port);
+    console.log('Yo man, we are live on ' + port);
 
     /* admin collection */
     database.createCollection('admin')

@@ -243,7 +243,7 @@ module.exports = function (app, db) {
             cursor.toArray(function (err, docs) {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
-                } else if (docs.length==0) {
+                } else if (docs.length == 0) {
                     res.send(utils.errorResponse("No results found"));
                 } else {
                     var count = 0
@@ -285,7 +285,6 @@ module.exports = function (app, db) {
     /* READ ALL */
     app.get('/feed/list', utils.isUserAuthenticated, (req, res) => {
         var count = 0;
-        //var cursor = db.collection('feeds').find().sort({'createdAt' : -1});
         var cursor = db.collection('feeds').find();
         cursor.toArray(function (err, docs) {
             if (err) {
@@ -294,20 +293,19 @@ module.exports = function (app, db) {
                 var feedsLength = docs.length
                 if (feedsLength > 0) {
                     for (i = 0; i < feedsLength; i++) {
+                        console.log("docs[i].userId : " + docs[i].userId)
                         /* Feed owner details */
                         if (docs[i].userId != null) {
-                            db.collection('users').aggregate([{
-                                $lookup: {
-                                    from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "feed_owner"
-                                }
-                            }], function (err, results) {
+                            db.collection('users').findOne({ _id: Number(docs[i].userId) }, (function (err, item) {
                                 if (err) {
                                     res.send(utils.errorResponse(err.errmsg));
                                 } else {
+                                    console.log("item : " + item.name)
                                     var feedSection = {}
-                                    feedSection.name = results[0].name
-                                    feedSection.userId = results[0]._id
-                                    feedSection.image = results[0].image
+                                    feedSection.name = item.name
+                                    feedSection.userId = item._id
+                                    feedSection.image = item.image
+                                    console.log("count : " + count)
                                     docs[count].feedOwner = feedSection
 
                                     /* Coutng total likes */
@@ -328,13 +326,15 @@ module.exports = function (app, db) {
                                     if (count == feedsLength)
                                         res.send(utils.successResponse(null, docs))
                                 }
-                            });
+                            }));
                         } else {
                             count++
                             if (count == feedsLength)
                                 res.send(utils.successResponse(null, docs))
                         }
                     }
+                } else {
+                    res.send(utils.successResponse(null, docs))
                 }
             }
         });
@@ -358,7 +358,7 @@ module.exports = function (app, db) {
                         console.log("error fetching feed : " + err.errmsg)
                     } else if (item == null) {
                         count++
-                        console.log("feed not found " )
+                        console.log("feed not found ")
                     } else {
                         feeds.push(item)
                         count++
@@ -558,7 +558,7 @@ module.exports = function (app, db) {
     });
 
     /* READ */
-    app.get('/feed/:id', (req, res) => {
+    app.get('/feed/:id', utils.isUserAuthenticated, (req, res) => {
         if (req.params.id == null) {
             res.send(utils.errorResponse('Feed id missing'));
         } else {
@@ -567,8 +567,44 @@ module.exports = function (app, db) {
             db.collection('feeds').findOne(details, (err, item) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
-                } else {
+                } else if (item == null) {
                     res.send(utils.successResponse(null, item))
+                } else {
+                    /* Feed owner details */
+                    if (item.userId != null) {
+                        db.collection('users').aggregate([{
+                            $lookup: {
+                                from: item.userId.toString(), localField: "_id", foreignField: "userId", as: "feed_owner"
+                            }
+                        }], function (err, results) {
+                            if (err) {
+                                res.send(utils.errorResponse(err.errmsg));
+                            } else {
+                                var feedSection = {}
+                                feedSection.name = results[0].name
+                                feedSection.userId = results[0]._id
+                                feedSection.image = results[0].image
+                                item.feedOwner = feedSection
+
+                                /* Coutng total likes */
+                                item.likesCount = 0
+                                if (item.likes != null && item.likes.length > 0) {
+                                    item.likesCount = item.likes.length
+                                    if (item.likes.indexOf(userId) != -1) {
+                                        item.hasLiked = true
+                                    }
+                                }
+                                /* Coutng total comments */
+                                item.commentsCount = 0
+                                if (item.comments != null && item.comments.length > 0) {
+                                    item.commentsCount = item.comments.length
+                                }
+                                res.send(utils.successResponse(null, item))
+                            }
+                        });
+                    } else {
+                        res.send(utils.successResponse(null, item))
+                    }
                 }
             });
         }
@@ -596,7 +632,7 @@ module.exports = function (app, db) {
                         db.collection('notifications').remove(notificationUnlike, (err, item) => {
                             if (err) {
                                 console.log("error : " + err.errmsg)
-                            } 
+                            }
                         });
                         break;
                     case constants.comment:
