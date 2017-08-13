@@ -337,6 +337,79 @@ module.exports = function (app, db) {
         });
     });
 
+    /* Feeds from Friends */
+    app.get('/feed/friends', utils.isUserAuthenticated, (req, res) => {
+        var cursor = db.collection('friends').findOne({ _id: userId }, (err, item) => {
+            if (err) {
+                res.send(utils.errorResponse(err.errmsg));
+            } else {
+                if (item.friendList != null && item.friendList.length > 0) {
+                    var count = 0;
+                    var friendList = []
+                    for (var m = 0; m < item.friendList.length; m++) {
+                        friendList.push(item.friendList[m]._id)
+                    }
+                    var cursor = db.collection('feeds').find( { 
+                        userId : { $in : friendList } 
+                    });
+
+                    //db.inventory.find( { userId: { $in: item.friendList} } )
+                    cursor.toArray(function (err, docs) {
+                        if (err) {
+                            res.send(utils.errorResponse(err.errmsg));
+                        } else {
+                            var feedsLength = docs.length
+                            if (feedsLength > 0) {
+                                for (i = 0; i < feedsLength; i++) {
+                                    /* Feed owner details */
+                                    if (docs[i].userId != null) {
+                                        db.collection('users').findOne({ _id: Number(docs[i].userId) }, (function (err, item) {
+                                            if (err) {
+                                                res.send(utils.errorResponse(err.errmsg));
+                                            } else {
+                                                var feedSection = {}
+                                                feedSection.name = item.name
+                                                feedSection.userId = item._id
+                                                feedSection.image = item.image
+                                                docs[count].feedOwner = feedSection
+
+                                                /* Coutng total likes */
+                                                docs[count].likesCount = 0
+                                                if (docs[count].likes != null && docs[count].likes.length > 0) {
+                                                    docs[count].likesCount = docs[count].likes.length
+                                                    if (docs[count].likes.indexOf(userId) != -1) {
+                                                        docs[count].hasLiked = true
+                                                    }
+                                                }
+                                                /* Coutng total comments */
+                                                docs[count].commentsCount = 0
+                                                if (docs[count].comments != null && docs[count].comments.length > 0) {
+                                                    docs[count].commentsCount = docs[count].comments.length
+                                                }
+
+                                                count++
+                                                if (count == feedsLength)
+                                                    res.send(utils.successResponse(null, docs))
+                                            }
+                                        }));
+                                    } else {
+                                        count++
+                                        if (count == feedsLength)
+                                            res.send(utils.successResponse(null, docs))
+                                    }
+                                }
+                            } else {
+                                res.send(utils.successResponse(null, docs))
+                            }
+                        }
+                    });
+                } else {
+                    res.send(utils.successResponse("You have no feeds from friends ", friendList))
+                }
+            }
+        });
+    });
+
     /* READ Feed by list of ids */
     app.get('/feed/list-by-id/:feedIds', utils.isUserAuthenticated, (req, res) => {
         if (req.params.feedIds == null || req.params.feedIds.length == 0) {
@@ -619,7 +692,7 @@ module.exports = function (app, db) {
             } else {
                 var id = item.userId
                 /* get fcm token from user */
-                db.collection('users').findOne({ _id : id }, (function (err, item) {
+                db.collection('users').findOne({ _id: id }, (function (err, item) {
                     if (err) {
                         console.log(err.errmsg)
                     } else if (item == null) {
