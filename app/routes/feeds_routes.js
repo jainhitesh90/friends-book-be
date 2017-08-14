@@ -451,7 +451,7 @@ module.exports = function (app, db) {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    sendNotificationToUser(req.params.id, userName + " " + constants.like, 'http://localhost:3000/home/feed?id=' + req.params.id);
+                    sendNotificationToUser(req.params.id, userName + " " + constants.like, '/home/feed?id=' + req.params.id);
                     res.send(utils.successResponse('Feed liked successfully', result))
                 }
             });
@@ -488,7 +488,7 @@ module.exports = function (app, db) {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
-                    sendNotificationToUser(req.params.id, userName + " " + constants.comment, 'http://localhost:3000/home/feed?id=' + req.params.id);
+                    sendNotificationToUser(req.params.id, userName + " " + constants.comment, '/home/feed?id=' + req.params.id);
                     res.send(utils.successResponse('Commented successfully on feed', result))
                 }
             });

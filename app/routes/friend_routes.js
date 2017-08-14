@@ -20,7 +20,7 @@ module.exports = function (app, db) {
                         if (err) {
                             res.send(utils.errorResponse(err.errmsg));
                         } else {
-                            sendNotificationToUser(req.body.id, userName + " " + constants.frnd_req_sent, constants.activity_frnd_req_sent, 'http://localhost:3000/home/friends');
+                            sendNotificationToUser(req.body.id, userName + " " + constants.frnd_req_sent, constants.activity_frnd_req_sent, '/home/friends');
                             res.send(utils.successResponse('Friend request sent successfully', null))
                         }
                     });
@@ -118,7 +118,7 @@ module.exports = function (app, db) {
                                                 if (err) {
                                                     res.send(utils.errorResponse(err.errmsg));
                                                 } else {
-                                                    sendNotificationToUser(req.body.id, userName + " " + 'http://localhost:3000/home/friends');
+                                                    sendNotificationToUser(req.body.id, userName + " " + '/home/friends');
                                                     res.send(utils.successResponse("We are now friends", null))
                                                 }
                                             });
