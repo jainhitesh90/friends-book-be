@@ -69,6 +69,7 @@ module.exports = function (app, db) {
                                                 if (err) {
                                                     res.send(utils.errorResponse(err.errmsg));
                                                 } else {
+                                                    result.ops[0].newUser = true /* 1st time user */
                                                     res.send(utils.successResponse('Profile created!!', result.ops[0]))
                                                 }
                                             });

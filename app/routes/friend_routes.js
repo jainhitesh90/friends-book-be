@@ -174,7 +174,7 @@ module.exports = function (app, db) {
         });
     });
 
-    var sendNotificationToUser = function (userId, content,activity, redirectUrl) {
+    var sendNotificationToUser = function (userId, content, activity, routeUrl) {
         db.collection('users').findOne({ _id : userId }, (function (err, item) {
             if (err) {
                 console.log(err.errmsg)
@@ -184,7 +184,7 @@ module.exports = function (app, db) {
                 var id = item._id
                 var fcmToken = item.fcmToken
                 const notificationService = require('../../services/fcm-notification.js')
-                notificationService.updateNotificationDocument(db, id, fcmToken, content, activity, redirectUrl)
+                notificationService.updateNotificationDocument(db, id, fcmToken, content, activity, routeUrl)
             }
         }));
     }

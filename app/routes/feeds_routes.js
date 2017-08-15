@@ -681,7 +681,7 @@ module.exports = function (app, db) {
         }
     });
 
-    var sendNotificationToUser = function (feedId, content, redirectUrl) {
+    var sendNotificationToUser = function (feedId, content, routeUrl) {
         /* get user id from feed */
         const details = { '_id': new ObjectID(feedId) };
         db.collection('feeds').findOne(details, (function (err, item) {
@@ -700,7 +700,7 @@ module.exports = function (app, db) {
                     } else {
                         var fcmToken = item.fcmToken
                         const notificationService = require('../../services/fcm-notification.js')
-                        notificationService.updateNotificationDocument(db, id, fcmToken, content, redirectUrl)
+                        notificationService.updateNotificationDocument(db, id, fcmToken, content, routeUrl)
                     }
                 }));
             }
