@@ -349,8 +349,8 @@ module.exports = function (app, db) {
                     for (var m = 0; m < item.friendList.length; m++) {
                         friendList.push(item.friendList[m]._id)
                     }
-                    var cursor = db.collection('feeds').find( { 
-                        userId : { $in : friendList } 
+                    var cursor = db.collection('feeds').find({
+                        userId: { $in: friendList }
                     });
 
                     //db.inventory.find( { userId: { $in: item.friendList} } )
@@ -510,54 +510,62 @@ module.exports = function (app, db) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {
                     var count1 = 0, count2 = 0
-                    var commentArrayLength = item['comments'].length
-                    for (i = 0; i < commentArrayLength; i++) {
-                        commentText.push(item['comments'][i].comment)
-                        db.collection('users').aggregate([{
-                            $lookup: {
-                                from: item['comments'][i].userId.toString(), localField: "_id", foreignField: "userId", as: "feed_comments"
+                    if (item['likes'] == null && item['comments'] == null)
+                        res.send(utils.successResponse(null, combinedResults))
+                    else {
+                        if (item['comments'] != null) {
+                            var commentArrayLength = item['comments'].length
+                            for (i = 0; i < commentArrayLength; i++) {
+                                commentText.push(item['comments'][i].comment)
+                                db.collection('users').aggregate([{
+                                    $lookup: {
+                                        from: item['comments'][i].userId.toString(), localField: "_id", foreignField: "userId", as: "feed_comments"
+                                    }
+                                }], function (err, results) {
+                                    if (err) {
+                                        res.send(utils.errorResponse(err.errmsg));
+                                    } else {
+                                        var commentSection = {}
+                                        commentSection.name = results[count1].name
+                                        commentSection.image = results[count1].image
+                                        commentSection.content = commentText[count1]
+                                        commentsList.push(commentSection);
+                                        count1++
+                                        if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
+                                            combinedResults.commentsList = commentsList
+                                            combinedResults.likesList = likesList
+                                            res.send(utils.successResponse(null, combinedResults))
+                                        }
+                                    }
+                                });
                             }
-                        }], function (err, results) {
-                            if (err) {
-                                res.send(utils.errorResponse(err.errmsg));
-                            } else {
-                                var commentSection = {}
-                                commentSection.name = results[count1].name
-                                commentSection.image = results[count1].image
-                                commentSection.content = commentText[count1]
-                                commentsList.push(commentSection);
-                                count1++
-                                if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
-                                    combinedResults.commentsList = commentsList
-                                    combinedResults.likesList = likesList
-                                    res.send(utils.successResponse(null, combinedResults))
-                                }
-                            }
-                        });
-                    }
+                        }
 
-                    var likesArrayLength = item['likes'].length
-                    for (i = 0; i < likesArrayLength; i++) {
-                        db.collection('users').aggregate([{
-                            $lookup: {
-                                from: item['likes'][i].toString(), localField: "_id", foreignField: "id", as: "feed_likes"
+                        if (item['likes'] != null) {
+                            var likesArrayLength = item['likes'].length
+                            for (i = 0; i < likesArrayLength; i++) {
+                                db.collection('users').aggregate([{
+                                    $lookup: {
+                                        from: item['likes'][i].toString(), localField: "_id", foreignField: "id", as: "feed_likes"
+                                    }
+                                }], function (err, results) {
+                                    if (err) {
+                                        res.send(utils.errorResponse(err.errmsg));
+                                    } else {
+                                        var likeSection = {}
+                                        likeSection.name = results[count2].name
+                                        likeSection.image = results[count2].image
+                                        likesList.push(likeSection);
+                                        count2++
+                                        if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
+                                            combinedResults.commentsList = commentsList
+                                            combinedResults.likesList = likesList
+                                            res.send(utils.successResponse("yo", combinedResults))
+                                        }
+                                    }
+                                });
                             }
-                        }], function (err, results) {
-                            if (err) {
-                                res.send(utils.errorResponse(err.errmsg));
-                            } else {
-                                var likeSection = {}
-                                likeSection.name = results[count2].name
-                                likeSection.image = results[count2].image
-                                likesList.push(likeSection);
-                                count2++
-                                if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
-                                    combinedResults.commentsList = commentsList
-                                    combinedResults.likesList = likesList
-                                    res.send(utils.successResponse("yo", combinedResults))
-                                }
-                            }
-                        });
+                        }
                     }
                 }
             });
