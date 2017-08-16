@@ -18,6 +18,14 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded());
 app.use(allowCrossDomain);
 
+
+global.abs_path = function(path) {
+  return path;
+}
+global.include = function(file) {
+  return require(abs_path(file));
+}
+
 MongoClient.connect(credentials.url, (err, database) => {
   if (err) return console.log(err)
   require('./app/routes')(app, database);
