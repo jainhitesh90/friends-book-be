@@ -1,5 +1,6 @@
+const utils = require('../../utils/utils.js')
+
 module.exports = function (app, db) {
-    const utils = require('../../utils/utils.js')
     utils.setdatabase(db)
     var ObjectID = require('mongodb').ObjectID;
 
