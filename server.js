@@ -1,7 +1,7 @@
 const express = require('express');
 const MongoClient = require('mongodb').MongoClient;
 const bodyParser = require('body-parser');
-const credentials = require('./config/credentials');
+const credentials = require('./config/credentials.js');
 const app = express();
 
 const port = 8080;
