@@ -22,7 +22,6 @@ MongoClient.connect(credentials.url, (err, database) => {
   if (err) return console.log(err)
   require('./app/routes')(app, database);
   app.listen(process.env.PORT || port, () => {
-    console.log('process.env.PORT ' + process.env.PORT);
     console.log('Our app is live on ' + port);
 
     /* admin collection */
