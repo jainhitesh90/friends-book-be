@@ -505,6 +505,7 @@ module.exports = function (app, db) {
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
+            var commentArrayLength = 0; likesArrayLength = 0
             db.collection('feeds').findOne(details, (err, item) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
@@ -513,36 +514,11 @@ module.exports = function (app, db) {
                     if (item['likes'] == null && item['comments'] == null)
                         res.send(utils.successResponse(null, combinedResults))
                     else {
-                        if (item['comments'] != null) {
-                            var commentArrayLength = item['comments'].length
-                            for (i = 0; i < commentArrayLength; i++) {
-                                commentText.push(item['comments'][i].comment)
-                                db.collection('users').aggregate([{
-                                    $lookup: {
-                                        from: item['comments'][i].userId.toString(), localField: "_id", foreignField: "userId", as: "feed_comments"
-                                    }
-                                }], function (err, results) {
-                                    if (err) {
-                                        res.send(utils.errorResponse(err.errmsg));
-                                    } else {
-                                        var commentSection = {}
-                                        commentSection.name = results[count1].name
-                                        commentSection.image = results[count1].image
-                                        commentSection.content = commentText[count1]
-                                        commentsList.push(commentSection);
-                                        count1++
-                                        if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
-                                            combinedResults.commentsList = commentsList
-                                            combinedResults.likesList = likesList
-                                            res.send(utils.successResponse(null, combinedResults))
-                                        }
-                                    }
-                                });
-                            }
-                        }
-
+                        if (item['likes'] != null)
+                            likesArrayLength = item['likes'].length
+                        if (item['comments'] != null) 
+                            commentArrayLength = item['comments'].length
                         if (item['likes'] != null) {
-                            var likesArrayLength = item['likes'].length
                             for (i = 0; i < likesArrayLength; i++) {
                                 db.collection('users').aggregate([{
                                     $lookup: {
@@ -564,6 +540,39 @@ module.exports = function (app, db) {
                                         }
                                     }
                                 });
+                            }
+                        }
+                        if (item['comments'] != null) {
+                            if (commentArrayLength == 0) {
+                                if (likesList.length == likesArrayLength) {
+                                    combinedResults.likesList = likesList
+                                    res.send(utils.successResponse(null, combinedResults))
+                                }
+                            } else {
+                                for (i = 0; i < commentArrayLength; i++) {
+                                    commentText.push(item['comments'][i].comment)
+                                    db.collection('users').aggregate([{
+                                        $lookup: {
+                                            from: item['comments'][i].userId.toString(), localField: "_id", foreignField: "userId", as: "feed_comments"
+                                        }
+                                    }], function (err, results) {
+                                        if (err) {
+                                            res.send(utils.errorResponse(err.errmsg));
+                                        } else {
+                                            var commentSection = {}
+                                            commentSection.name = results[count1].name
+                                            commentSection.image = results[count1].image
+                                            commentSection.content = commentText[count1]
+                                            commentsList.push(commentSection);
+                                            count1++
+                                            if (likesList.length == likesArrayLength && commentsList.length == commentArrayLength) {
+                                                combinedResults.commentsList = commentsList
+                                                combinedResults.likesList = likesList
+                                                res.send(utils.successResponse(null, combinedResults))
+                                            }
+                                        }
+                                    });
+                                }
                             }
                         }
                     }

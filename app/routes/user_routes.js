@@ -169,4 +169,68 @@ module.exports = function (app, db) {
             }
         });
     });
+
+    /* USER FRIEND SUGGESTIOn */
+    app.get('/users/friends-suggestion', utils.isUserAuthenticated, (req, res) => {
+        /* fetch all users */
+        var cursor = db.collection('users').find({}).project({ _id : 1, name: 1, image : 1 });
+        cursor.toArray(function (err, docs) {
+            if (err) {
+                res.send(utils.errorResponse(err.errmsg));
+            } else {
+                var users = []
+                var count = 0;
+                if (docs.length > 0) {
+                    for (var i = 0; i < docs.length; i++) {
+                        if (docs[i]._id != userId) {
+                            users.push(docs[i])
+                        }
+                        count++
+                        if (count == docs.length)
+                            filterFriends(users, res)
+                    }
+                } else {
+                    res.send(utils.successResponse(null, users))
+                }
+            }
+        });
+    });
+
+    /* Filter users from existing frineds */
+    var filterFriends = function(users, res){
+        var cursor = db.collection('friends').findOne({ _id : userId }, (err, item) => {
+            if (err) {
+                res.send(utils.errorResponse(err.errmsg));
+            } else {
+                var friendList = []
+                var count = 0
+                if (item.friendList != null && item.friendList.length > 0) {
+                    for (var i = 0; i < item.friendList.length; i++) {
+                        db.collection('users').findOne({ _id : item.friendList[i]['_id'] }, (function (err, user) {
+                            if (err) {
+                                console.log("error : " + err.errmsg)
+                                count++
+                            } else if (user == null) {
+                                count++
+                            } else {
+                                var userData = {}
+                                userData._id = user._id
+                                userData.name = user.name
+                                userData.image = user.image
+                                userData.friendStatus = item.friendList[count]['status']
+                                var pos = users.map(function (e) { return e._id;}).indexOf(user._id);
+                                if (pos != -1)
+                                    users.splice(pos,1)
+                                count++
+                            }
+                            if (count == item.friendList.length)
+                                res.send(utils.successResponse("Suggestions 1 ", users))
+                        }));
+                    }
+                } else {
+                    res.send(utils.successResponse("Suggestions 2 ", users))
+                }
+            }
+        });
+    }
 };
