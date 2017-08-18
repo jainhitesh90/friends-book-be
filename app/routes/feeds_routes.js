@@ -349,11 +349,15 @@ module.exports = function (app, db) {
                     for (var m = 0; m < item.friendList.length; m++) {
                         friendList.push(item.friendList[m]._id)
                     }
+                    /* All blogs/events + feeds from friends */
                     var cursor = db.collection('feeds').find({
-                        userId: { $in: friendList }
+                        $or: [
+                            { userId : { $in : friendList }},
+                            { feedType : 'blog' },
+                            { feedType : 'event' }
+                        ]
                     });
 
-                    //db.inventory.find( { userId: { $in: item.friendList} } )
                     cursor.toArray(function (err, docs) {
                         if (err) {
                             res.send(utils.errorResponse(err.errmsg));
