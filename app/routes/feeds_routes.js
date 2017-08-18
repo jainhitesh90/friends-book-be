@@ -2,6 +2,7 @@ const utils = require('../../utils/utils.js')
 const constants = require('../../utils/constants.js')
 var multer = require('multer')
 var upload = multer({ dest: 'uploads/' })
+async = require("async");
 
 module.exports = function (app, db) {
     utils.setdatabase(db)
@@ -228,195 +229,64 @@ module.exports = function (app, db) {
         }
     });
 
-    /* Find feed by keyword */
-    app.get('/feed/search/:keyword', (req, res) => {
-        if (req.params.keyword == null || req.params.keyword == '') {
-            res.send(utils.errorResponse('Keyword missing'));
-        } else {
-            var cursor = db.collection('feeds').find({
-                $or: [
-                    { description: { $regex: ".*" + req.params.keyword + ".*", '$options': 'i' } },
-                    { title: { $regex: ".*" + req.params.keyword + ".*", '$options': 'i' } },
-                    { description: { $regex: ".*" + req.params.keyword + ".*", '$options': 'i' } }
-                ]
-            });
-            cursor.toArray(function (err, docs) {
-                if (err) {
-                    res.send(utils.errorResponse(err.errmsg));
-                } else if (docs.length == 0) {
-                    res.send(utils.errorResponse("No results found"));
-                } else {
-                    var count = 0
-                    var feedsLength = docs.length
-                    if (feedsLength > 0) {
-                        for (i = 0; i < feedsLength; i++) {
-                            /* Feed owner details */
-                            if (docs[i].userId != null) {
-                                db.collection('users').aggregate([{
-                                    $lookup: {
-                                        from: docs[i].userId.toString(), localField: "_id", foreignField: "userId", as: "feed_owner"
-                                    }
-                                }], function (err, results) {
-                                    if (err) {
-                                        res.send(utils.errorResponse(err.errmsg));
-                                    } else {
-                                        var feedSection = {}
-                                        feedSection.name = results[0].name
-                                        feedSection.userId = results[0]._id
-                                        feedSection.image = results[0].image
-                                        docs[count].feedOwner = feedSection
-                                        count++
-                                        if (count == feedsLength)
-                                            res.send(utils.successResponse(null, docs))
-                                    }
-                                });
-                            } else {
-                                count++
-                                if (count == feedsLength)
-                                    res.send(utils.successResponse(null, docs))
-                            }
-                        }
-                    }
-                }
-            });
-        }
-    });
-
-    /* READ ALL */
+    /* Read all feeds */
     app.get('/feed/list/:skip', utils.isUserAuthenticated, (req, res) => {
-        var count = 0, skipCount = 0;
-        var limitCount = Number(5);
-        skipCount = Number(req.params.skip) * limitCount
-        var cursor = db.collection('feeds').find().limit(limitCount).skip(skipCount);
-        cursor.toArray(function (err, docs) {
-            if (err) {
-                res.send(utils.errorResponse(err.errmsg));
-            } else {
-                var feedsLength = docs.length
-                if (feedsLength > 0) {
-                    for (i = 0; i < feedsLength; i++) {
-                        /* Feed owner details */
-                        if (docs[i].userId != null) {
-                            db.collection('users').findOne({ _id: Number(docs[i].userId) }, (function (err, item) {
-                                if (err) {
-                                    res.send(utils.errorResponse(err.errmsg));
-                                } else {
-                                    var feedSection = {}
-                                    feedSection.name = item.name
-                                    feedSection.userId = item._id
-                                    feedSection.image = item.image
-                                    docs[count].feedOwner = feedSection
-
-                                    /* Coutng total likes */
-                                    docs[count].likesCount = 0
-                                    if (docs[count].likes != null && docs[count].likes.length > 0) {
-                                        docs[count].likesCount = docs[count].likes.length
-                                        if (docs[count].likes.indexOf(userId) != -1) {
-                                            docs[count].hasLiked = true
-                                        }
-                                    }
-                                    /* Coutng total comments */
-                                    docs[count].commentsCount = 0
-                                    if (docs[count].comments != null && docs[count].comments.length > 0) {
-                                        docs[count].commentsCount = docs[count].comments.length
-                                    }
-
-                                    count++
-                                    if (count == feedsLength)
-                                        res.send(utils.successResponse(null, docs))
-                                }
-                            }));
-                        } else {
-                            count++
-                            if (count == feedsLength)
-                                res.send(utils.successResponse(null, docs))
-                        }
-                    }
-                } else {
-                    res.send(utils.successResponse(null, docs))
-                }
-            }
-        });
+        findCollections(Number(req.params.skip),{}, res)
     });
 
     /* Feeds from Friends */
     app.get('/feed/friends/:skip', utils.isUserAuthenticated, (req, res) => {
-        var count = 0, skipCount = 0;
-        var limitCount = Number(5);
-        skipCount = Number(req.params.skip) * limitCount
         var cursor = db.collection('friends').findOne({ _id: userId }, (err, item) => {
             if (err) {
                 res.send(utils.errorResponse(err.errmsg));
             } else {
                 if (item.friendList != null && item.friendList.length > 0) {
-                    var count = 0;
                     var friendList = []
                     for (var m = 0; m < item.friendList.length; m++) {
                         friendList.push(item.friendList[m]._id)
                     }
-                    /* All blogs/events + feeds from friends */
-                    var cursor = db.collection('feeds').find({
-                        $or: [
-                            { userId : { $in : friendList }},
-                            { feedType : 'blog' },
-                            { feedType : 'event' }
-                        ]
-                    }).limit(limitCount).skip(skipCount);
-
-                    cursor.toArray(function (err, docs) {
-                        if (err) {
-                            res.send(utils.errorResponse(err.errmsg));
-                        } else {
-                            var feedsLength = docs.length
-                            if (feedsLength > 0) {
-                                for (i = 0; i < feedsLength; i++) {
-                                    /* Feed owner details */
-                                    if (docs[i].userId != null) {
-                                        db.collection('users').findOne({ _id: Number(docs[i].userId) }, (function (err, item) {
-                                            if (err) {
-                                                res.send(utils.errorResponse(err.errmsg));
-                                            } else {
-                                                var feedSection = {}
-                                                feedSection.name = item.name
-                                                feedSection.userId = item._id
-                                                feedSection.image = item.image
-                                                docs[count].feedOwner = feedSection
-
-                                                /* Coutng total likes */
-                                                docs[count].likesCount = 0
-                                                if (docs[count].likes != null && docs[count].likes.length > 0) {
-                                                    docs[count].likesCount = docs[count].likes.length
-                                                    if (docs[count].likes.indexOf(userId) != -1) {
-                                                        docs[count].hasLiked = true
-                                                    }
-                                                }
-                                                /* Coutng total comments */
-                                                docs[count].commentsCount = 0
-                                                if (docs[count].comments != null && docs[count].comments.length > 0) {
-                                                    docs[count].commentsCount = docs[count].comments.length
-                                                }
-
-                                                count++
-                                                if (count == feedsLength)
-                                                    res.send(utils.successResponse(null, docs))
-                                            }
-                                        }));
-                                    } else {
-                                        count++
-                                        if (count == feedsLength)
-                                            res.send(utils.successResponse(null, docs))
-                                    }
-                                }
-                            } else {
-                                res.send(utils.successResponse(null, docs))
-                            }
-                        }
-                    });
+                    var query = { $or: [ { userId : { $in : friendList }}, { feedType : 'blog' }, { feedType : 'event' } ] }
+                    findCollections(Number(req.params.skip),query, res)
                 } else {
                     res.send(utils.successResponse("You have no feeds from friends ", friendList))
                 }
             }
         });
+    });
+
+    /* Find feed by keyword */
+    app.get('/feed/search/:keyword', (req, res) => {
+        if (req.params.keyword == null || req.params.keyword == '') {
+            res.send(utils.errorResponse('Keyword missing'));
+        } else {
+            findCollections(0, {
+                $or: [
+                    { description: { $regex: ".*" + req.params.keyword + ".*", '$options': 'i' } },
+                    { title: { $regex: ".*" + req.params.keyword + ".*", '$options': 'i' } },
+                    { description: { $regex: ".*" + req.params.keyword + ".*", '$options': 'i' } }
+                ]
+            } , res)
+        }
+    });
+
+    /* Read My Feeds */
+    app.get('/feed/my-feeds', utils.isUserAuthenticated, (req, res) => {
+        findCollections(0, { userId: userId } , res)
+    });
+
+    /* Read Others Feeds */
+    app.get('/feed/other-feeds/:id', utils.isUserAuthenticated, (req, res) => {
+        findCollections(0, { userId: Number(req.params.id) } , res)
+    });
+
+    /* Read single feed */
+    app.get('/feed/:id', utils.isUserAuthenticated, (req, res) => {
+        if (req.params.id == null) {
+            res.send(utils.errorResponse('Feed id missing'));
+        } else {
+            const id = req.params.id;
+            findCollections(0, { '_id': new ObjectID(id) } , res)
+        }
     });
 
     /* READ Feed by list of ids */
@@ -446,61 +316,6 @@ module.exports = function (app, db) {
                     }
                 });
             }
-        }
-    });
-
-    /* Like a Feed */
-    app.put('/feed/like/:id', utils.isUserAuthenticated, (req, res) => {
-        if (req.params.id == null) {
-            res.send(utils.errorResponse('Feed id missing'));
-        } else {
-            const id = req.params.id;
-            const details = { '_id': new ObjectID(id) };
-            db.collection('feeds').update(details, { "$push": { likes: userId } }, (err, result) => {
-                if (err) {
-                    res.send(utils.errorResponse(err.errmsg));
-                } else {
-                    sendNotificationToUser(req.params.id, userName + " " + constants.like, '/home/feed?id=' + req.params.id);
-                    res.send(utils.successResponse('Feed liked successfully', result))
-                }
-            });
-        }
-    });
-
-    /* Unlike a Feed */
-    app.put('/feed/unlike/:id', utils.isUserAuthenticated, (req, res) => {
-        if (req.params.id == null) {
-            res.send(utils.errorResponse('Feed id missing'));
-        } else {
-            const id = req.params.id;
-            const details = { '_id': new ObjectID(id) };
-            db.collection('feeds').update(details, { "$pull": { likes: userId } }, (err, result) => {
-                if (err) {
-                    res.send(utils.errorResponse(err.errmsg));
-                } else {
-                    res.send(utils.successResponse('Feed like removed successfully', result))
-                }
-            });
-        }
-    });
-
-    /* Comment on a Feed */
-    app.put('/feed/comment/:id', utils.isUserAuthenticated, (req, res) => {
-        if (req.params.id == null) {
-            res.send(utils.errorResponse('Feed id missing'));
-        } else if (req.body.newComment == null || req.body.newComment == '') {
-            res.send(utils.errorResponse('Comment missing'));
-        } else {
-            const id = req.params.id;
-            const details = { '_id': new ObjectID(id) };
-            db.collection('feeds').update(details, { "$push": { comments: { userId: userId, comment: req.body.newComment } } }, (err, result) => {
-                if (err) {
-                    res.send(utils.errorResponse(err.errmsg));
-                } else {
-                    sendNotificationToUser(req.params.id, userName + " " + constants.comment, '/home/feed?id=' + req.params.id);
-                    res.send(utils.successResponse('Commented successfully on feed', result))
-                }
-            });
         }
     });
 
@@ -590,118 +405,56 @@ module.exports = function (app, db) {
         }
     });
 
-    /* Read My Feeds */
-    app.get('/feed/my-feeds', utils.isUserAuthenticated, (req, res) => {
-        var cursor = db.collection('feeds').find({ userId: userId });
-        cursor.toArray(function (err, docs) {
-            if (err) {
-                res.send(utils.errorResponse(err.errmsg));
-            } else {
-                var feedsLength = docs.length
-                if (feedsLength > 0) {
-                    for (i = 0; i < feedsLength; i++) {
-                        /* Coutng total likes */
-                        docs[i].likesCount = 0
-                        if (docs[i].likes != null && docs[i].likes.length > 0) {
-                            docs[i].likesCount = docs[i].likes.length
-                            if (docs[i].likes.indexOf(userId) != -1) {
-                                docs[i].hasLiked = true
-                            }
-                        }
-                        /* Coutng total comments */
-                        docs[i].commentsCount = 0
-                        if (docs[i].comments != null && docs[i].comments.length > 0) {
-                            docs[i].commentsCount = docs[i].comments.length
-                        }
-                    }
-                }
-                res.send(utils.successResponse(null, docs))
-            }
-        });
-    });
-
-    /* Read Others Feeds */
-    app.get('/feed/other-feeds/:id', utils.isUserAuthenticated, (req, res) => {
-        if (req.params.id == null) {
-            res.send(utils.errorResponse('Feed id missing'));
-        } else {
-            var cursor = db.collection('feeds').find({ userId: Number(req.params.id) });
-            cursor.toArray(function (err, docs) {
-                if (err) {
-                    res.send(utils.errorResponse(err.errmsg));
-                } else {
-                    var feedsLength = docs.length
-                    if (feedsLength > 0) {
-                        for (i = 0; i < feedsLength; i++) {
-                            /* Coutng total likes */
-                            docs[i].likesCount = 0
-                            if (docs[i].likes != null && docs[i].likes.length > 0) {
-                                docs[i].likesCount = docs[i].likes.length
-                                if (docs[i].likes.indexOf(userId) != -1) {
-                                    docs[i].hasLiked = true
-                                }
-                            }
-                            /* Coutng total comments */
-                            docs[i].commentsCount = 0
-                            if (docs[i].comments != null && docs[i].comments.length > 0) {
-                                docs[i].commentsCount = docs[i].comments.length
-                            }
-                        }
-                    }
-                    res.send(utils.successResponse(null, docs))
-                }
-            });
-        }
-    });
-
-    /* READ */
-    app.get('/feed/:id', utils.isUserAuthenticated, (req, res) => {
+    /* Like a Feed */
+    app.put('/feed/like/:id', utils.isUserAuthenticated, (req, res) => {
         if (req.params.id == null) {
             res.send(utils.errorResponse('Feed id missing'));
         } else {
             const id = req.params.id;
             const details = { '_id': new ObjectID(id) };
-            db.collection('feeds').findOne(details, (err, item) => {
+            db.collection('feeds').update(details, { "$push": { likes: userId } }, (err, result) => {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
-                } else if (item == null) {
-                    res.send(utils.successResponse(null, item))
                 } else {
-                    /* Feed owner details */
-                    if (item.userId != null) {
-                        db.collection('users').aggregate([{
-                            $lookup: {
-                                from: item.userId.toString(), localField: "_id", foreignField: "userId", as: "feed_owner"
-                            }
-                        }], function (err, results) {
-                            if (err) {
-                                res.send(utils.errorResponse(err.errmsg));
-                            } else {
-                                var feedSection = {}
-                                feedSection.name = results[0].name
-                                feedSection.userId = results[0]._id
-                                feedSection.image = results[0].image
-                                item.feedOwner = feedSection
+                    sendNotificationToUser(req.params.id, userName + " " + constants.like, '/home/feed?id=' + req.params.id);
+                    res.send(utils.successResponse('Feed liked successfully', result))
+                }
+            });
+        }
+    });
 
-                                /* Coutng total likes */
-                                item.likesCount = 0
-                                if (item.likes != null && item.likes.length > 0) {
-                                    item.likesCount = item.likes.length
-                                    if (item.likes.indexOf(userId) != -1) {
-                                        item.hasLiked = true
-                                    }
-                                }
-                                /* Coutng total comments */
-                                item.commentsCount = 0
-                                if (item.comments != null && item.comments.length > 0) {
-                                    item.commentsCount = item.comments.length
-                                }
-                                res.send(utils.successResponse(null, item))
-                            }
-                        });
-                    } else {
-                        res.send(utils.successResponse(null, item))
-                    }
+    /* Unlike a Feed */
+    app.put('/feed/unlike/:id', utils.isUserAuthenticated, (req, res) => {
+        if (req.params.id == null) {
+            res.send(utils.errorResponse('Feed id missing'));
+        } else {
+            const id = req.params.id;
+            const details = { '_id': new ObjectID(id) };
+            db.collection('feeds').update(details, { "$pull": { likes: userId } }, (err, result) => {
+                if (err) {
+                    res.send(utils.errorResponse(err.errmsg));
+                } else {
+                    res.send(utils.successResponse('Feed like removed successfully', result))
+                }
+            });
+        }
+    });
+
+    /* Comment on a Feed */
+    app.put('/feed/comment/:id', utils.isUserAuthenticated, (req, res) => {
+        if (req.params.id == null) {
+            res.send(utils.errorResponse('Feed id missing'));
+        } else if (req.body.newComment == null || req.body.newComment == '') {
+            res.send(utils.errorResponse('Comment missing'));
+        } else {
+            const id = req.params.id;
+            const details = { '_id': new ObjectID(id) };
+            db.collection('feeds').update(details, { "$push": { comments: { userId: userId, comment: req.body.newComment } } }, (err, result) => {
+                if (err) {
+                    res.send(utils.errorResponse(err.errmsg));
+                } else {
+                    sendNotificationToUser(req.params.id, userName + " " + constants.comment, '/home/feed?id=' + req.params.id);
+                    res.send(utils.successResponse('Commented successfully on feed', result))
                 }
             });
         }
@@ -731,5 +484,80 @@ module.exports = function (app, db) {
                 }));
             }
         }));
+    }
+
+    var findCollections = function(skipParam, query, res) {
+        var newCount = 0, limitCount;
+        if (skipParam == 0) {
+            skipCount = 0
+            limitCount = Number(100)
+        } else {
+            limitCount = Number(5);
+            skipCount = skipParam * limitCount
+        }
+
+        console.log(" 1 query : " + query)
+        
+        db.collection('feeds').find(query).limit(limitCount).skip(skipCount).count(function (err, itemCount)  {
+            if (err) {
+                res.send(utils.errorResponse(err.errmsg));
+            } else if (itemCount == 0) {
+                res.send(utils.errorResponse("No posts"));
+            } else {
+                var allPost = []
+                db.collection('feeds').find(query).limit(limitCount).skip(skipCount).forEach(function(obj){ 
+                    var idToArray = [], totalCount = 0
+                    idToArray.push(obj.userId)
+                    async.each(
+                        idToArray, 
+                        function(item, completeCallback) {
+                            findOwnerDetails(obj.userId, function (user) {
+                                /* feed owner details */
+                                obj.feedOwner = user
+                                /* Coutng total likes */
+                                obj.likesCount = 0
+                                if (obj.likes != null && obj.likes.length > 0) {
+                                    obj.likesCount = obj.likes.length
+                                    if (obj.likes.indexOf(userId) != -1) {
+                                        obj.hasLiked = true
+                                    }
+                                }
+                                /* Coutng total comments */
+                                obj.commentsCount = 0
+                                if (obj.comments != null && obj.comments.length > 0) {
+                                    obj.commentsCount = obj.comments.length
+                                }
+                                /* push details and increment*/
+                                allPost.push(obj)
+                                newCount++
+                                if (newCount == itemCount)
+                                    res.send(utils.successResponse(null, allPost))
+                            });
+                        },
+                        console.log("completed")
+                    );
+                });
+            }
+        });
+    }
+
+    var findOwnerDetails = function (userId, callback) {
+        if (userId != null) {
+            db.collection('users').findOne({ _id : userId}, (function (err, item) {
+                if (err) {
+                    callback(null)
+                } else if (item == null) {
+                    callback(item)
+                } else {
+                    var feedSection = {}
+                    feedSection.name = item.name
+                    feedSection.userId = item._id
+                    feedSection.image = item.image
+                    callback(feedSection)
+                }
+            }));
+        } else {
+            callback(null)
+        }
     }
 }
