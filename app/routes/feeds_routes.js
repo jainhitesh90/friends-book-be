@@ -285,7 +285,7 @@ module.exports = function (app, db) {
     /* READ ALL */
     app.get('/feed/list/:skip', utils.isUserAuthenticated, (req, res) => {
         var count = 0, skipCount = 0;
-        var limitCount = Number(10);
+        var limitCount = Number(5);
         skipCount = Number(req.params.skip) * limitCount
         var cursor = db.collection('feeds').find().limit(limitCount).skip(skipCount);
         cursor.toArray(function (err, docs) {
@@ -342,7 +342,7 @@ module.exports = function (app, db) {
     /* Feeds from Friends */
     app.get('/feed/friends/:skip', utils.isUserAuthenticated, (req, res) => {
         var count = 0, skipCount = 0;
-        var limitCount = Number(10);
+        var limitCount = Number(5);
         skipCount = Number(req.params.skip) * limitCount
         var cursor = db.collection('friends').findOne({ _id: userId }, (err, item) => {
             if (err) {
