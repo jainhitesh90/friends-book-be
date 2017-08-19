@@ -413,13 +413,8 @@ module.exports = function (app, db) {
 
     var findCollections = function (skipParam, query, res) {
         var newCount = 0, limitCount;
-        if (skipParam == 0) {
-            skipCount = 0
-            limitCount = Number(100)
-        } else {
-            limitCount = Number(5);
-            skipCount = skipParam * limitCount
-        }
+        limitCount = Number(5);
+        skipCount = skipParam * limitCount
 
         db.collection('feeds').find(query).limit(limitCount).skip(skipCount).count(function (err, itemCount) {
             if (err) {
