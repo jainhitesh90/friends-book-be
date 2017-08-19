@@ -44,5 +44,8 @@ MongoClient.connect(credentials.url, (err, database) => {
 
     /* feeds collection */
     database.createCollection('feeds')
+
+    /* activities collection */
+    database.createCollection('activities')
   });
 })
