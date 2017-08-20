@@ -26,58 +26,48 @@ module.exports = function (app, db) {
                     res.send(utils.successResponse('Welcome back!!', docs[0]))
                 } else {
                     var authToken = utils.getToken({ email: req.body.email })
-                    /* get user's incremented id */
-                    database.collection("counters").findAndModify(
-                        { _id: "userId" }, [], { $inc: { lastUserId: 1 } }, { new: true },    // query
-                        function (err, doc) {
-                            if (!err) {
-                                /* create profile */
-                                db.collection('users').insert({ _id: doc.value.lastUserId, email: req.body.email, name: req.body.name, image: req.body.image, provider: req.body.provider, token: req.body.token, uid: req.body.uid, authToken: authToken, createdAt: Date.now() }, (err, result) => {
+                    /* create profile */
+                    db.collection('users').insert({ _id : req.body.uid, email: req.body.email, name: req.body.name, image: req.body.image, provider: req.body.provider, token: req.body.token, authToken: authToken, createdAt: Date.now() }, (err, result) => {
+                        if (err) {
+                            if (String(err.errmsg).includes('duplicate')) // duplicate email id
+                                if (req.body.provider == 'facebook')
+                                    res.send(utils.errorResponse("Please login via gmail, you've registered using your gmail account"));
+                                else
+                                    res.send(utils.errorResponse("Please login via facebook, you've registered using your facebook account"));
+                            else
+                                res.send(utils.errorResponse(err.errmsg))
+                        } else {
+                            /* validate facebook token and id */
+                            if (req.body.provider == 'facebook') {
+                                request("https://graph.facebook.com/me?access_token=" + req.body.token, function (error, response, body) {
+                                    if (!error && response.statusCode == 200 && req.body.uid == JSON.parse(response.body).id) {
+                                        /* create empty friends row for this user */
+                                        const friend = { _id: req.body.uid, friendList: [] };
+                                        db.collection('friends').insert(friend, (err, friendResult) => {
+                                            if (err) {
+                                                res.send(utils.errorResponse(err.errmsg));
+                                            } else {
+                                                res.send(utils.successResponse('Profile created!!', result.ops[0]))
+                                            }
+                                        });
+                                    }
+                                    else
+                                        res.send(utils.errorResponse("Invalid facebook token"))
+                                })
+                            } else {
+                                /* create empty friends row for this user */
+                                const friend = { _id: req.body.uid, friendList: [] };
+                                db.collection('friends').insert(friend, (err, friendResult) => {
                                     if (err) {
-                                        if (String(err.errmsg).includes('duplicate')) // duplicate email id
-                                            if (req.body.provider == 'facebook')
-                                                res.send(utils.errorResponse("Please login via gmail, you've registered using your gmail account"));
-                                            else
-                                                res.send(utils.errorResponse("Please login via facebook, you've registered using your facebook account"));
-                                        else
-                                            res.send(utils.errorResponse(err.errmsg))
+                                        res.send(utils.errorResponse(err.errmsg));
                                     } else {
-                                        /* validate facebook token and id */
-                                        if (req.body.provider == 'facebook') {
-                                            request("https://graph.facebook.com/me?access_token=" + req.body.token, function (error, response, body) {
-                                                if (!error && response.statusCode == 200 && req.body.uid == JSON.parse(response.body).id) {
-                                                    /* create empty friends row for this user */
-                                                    const friend = { _id: doc.value.lastUserId, friendList: [] };
-                                                    db.collection('friends').insert(friend, (err, friendResult) => {
-                                                        if (err) {
-                                                            res.send(utils.errorResponse(err.errmsg));
-                                                        } else {
-                                                            res.send(utils.successResponse('Profile created!!', result.ops[0]))
-                                                        }
-                                                    });
-                                                }
-                                                else
-                                                    res.send(utils.errorResponse("Invalid facebook token"))
-                                            })
-                                        } else {
-                                            /* create empty friends row for this user */
-                                            const friend = { _id: doc.value.lastUserId, friendList: [] };
-                                            db.collection('friends').insert(friend, (err, friendResult) => {
-                                                if (err) {
-                                                    res.send(utils.errorResponse(err.errmsg));
-                                                } else {
-                                                    result.ops[0].newUser = true /* 1st time user */
-                                                    res.send(utils.successResponse('Profile created!!', result.ops[0]))
-                                                }
-                                            });
-                                        }
+                                        result.ops[0].newUser = true /* 1st time user */
+                                        res.send(utils.successResponse('Profile created!!', result.ops[0]))
                                     }
                                 });
-                            } else {
-                                res.utils.errorResponse("Unable to generate user id")
                             }
                         }
-                    );
+                    });
                 }
             });
         }

@@ -22,14 +22,11 @@ MongoClient.connect(credentials.url, (err, database) => {
   if (err) return console.log(err)
   require('./app/routes')(app, database);
   app.listen(process.env.PORT || port, () => {
-    console.log('Our  app is live on ' + port);
+    console.log('Our app is live on ' + port);
 
     /* admin collection */
     database.createCollection('admin')
     database.collection('admin').ensureIndex({ userName: 1 }, { unique: true });
-
-    database.createCollection('counters')
-    database.collection('counters').insert({ _id: "userId", lastUserId: 0 })
 
     /* user collection */
     database.createCollection('users')
@@ -37,7 +34,6 @@ MongoClient.connect(credentials.url, (err, database) => {
 
     /* friends collection */
     database.createCollection('friends')
-    database.collection('friends').ensureIndex({ _id : 1 }, { unique: true });
 
     /* notifications collection */
     database.createCollection('notifications')
