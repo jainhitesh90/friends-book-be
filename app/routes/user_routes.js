@@ -18,9 +18,6 @@ module.exports = function (app, db) {
         } else if (req.body.uid == null || req.body.uid == '') {
             res.send(utils.errorResponse('UID missing'));
         } else {
-            var userObject = {
-                email: req.body.email, name: req.body.name, image: req.body.image, provider: req.body.provider, token: req.body.token, uid: req.body.uid
-            };
             var cursor = db.collection('users').find({ email: req.body.email, provider: req.body.provider });
             cursor.toArray(function (err, docs) {
                 if (err) {
@@ -35,7 +32,7 @@ module.exports = function (app, db) {
                         function (err, doc) {
                             if (!err) {
                                 /* create profile */
-                                db.collection('users').insert({ _id: doc.value.lastUserId, email: req.body.email, name: req.body.name, image: req.body.image, provider: req.body.provider, token: req.body.token, uid: req.body.uid, authToken: authToken }, (err, result) => {
+                                db.collection('users').insert({ _id: doc.value.lastUserId, email: req.body.email, name: req.body.name, image: req.body.image, provider: req.body.provider, token: req.body.token, uid: req.body.uid, authToken: authToken, createdAt: Date.now() }, (err, result) => {
                                     if (err) {
                                         if (String(err.errmsg).includes('duplicate')) // duplicate email id
                                             if (req.body.provider == 'facebook')
@@ -88,7 +85,7 @@ module.exports = function (app, db) {
 
     /* READ ALL */
     app.get('/users/list', utils.isUserAuthenticated, (req, res) => {
-        var cursor = db.collection('users').find({});
+        var cursor = db.collection('users').find({}).sort( { createdAt : -1 } );
         cursor.toArray(function (err, docs) {
             if (err) {
                 res.send(utils.errorResponse(err.errmsg));
@@ -160,7 +157,7 @@ module.exports = function (app, db) {
 
     /* USER NOTIFICATIONS */
     app.get('/users/notifications', utils.isUserAuthenticated, (req, res) => {
-        var cursor = db.collection('notifications').find({ userId : userId });
+        var cursor = db.collection('notifications').find({ userId : userId }).sort( { createdAt : -1 } );
         cursor.toArray(function (err, docs) {
             if (err) {
                 res.send(utils.errorResponse(err.errmsg));
@@ -173,7 +170,7 @@ module.exports = function (app, db) {
     /* USER FRIEND SUGGESTIOn */
     app.get('/users/friends-suggestion', utils.isUserAuthenticated, (req, res) => {
         /* fetch all users */
-        var cursor = db.collection('users').find({}).project({ _id : 1, name: 1, image : 1 });
+        var cursor = db.collection('users').find({}).sort( { createdAt : -1 } ).project({ _id : 1, name: 1, image : 1 });
         cursor.toArray(function (err, docs) {
             if (err) {
                 res.send(utils.errorResponse(err.errmsg));
