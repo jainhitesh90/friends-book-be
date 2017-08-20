@@ -135,7 +135,7 @@ module.exports = function (app, db) {
         if (req.params.id == null) {
             res.send(utils.errorResponse('User id missing'));
         } else {
-            db.collection('users').findOne({ _id: Number(req.params.id) }, (function (err, item) {
+            db.collection('users').findOne({ _id: req.params.id }, (function (err, item) {
                 if (err) {
                     res.send(utils.errorResponse(err.errmsg));
                 } else {

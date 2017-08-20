@@ -219,7 +219,7 @@ module.exports = function (app, db) {
 
     /* Read Others Feeds */
     app.get('/feed/other-feeds/:id', utils.isUserAuthenticated, (req, res) => {
-        findCollections(0, { userId: Number(req.params.id) }, res)
+        findCollections(0, { userId: req.params.id }, res)
     });
 
     /* Read single feed */
