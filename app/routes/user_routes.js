@@ -157,7 +157,7 @@ module.exports = function (app, db) {
         });
     });
 
-    /* USER FRIEND SUGGESTIOn */
+    /* USER FRIEND SUGGESTION */
     app.get('/users/friends-suggestion', utils.isUserAuthenticated, (req, res) => {
         /* fetch all users */
         var cursor = db.collection('users').find({}).sort( { createdAt : -1 } ).project({ _id : 1, name: 1, image : 1 });

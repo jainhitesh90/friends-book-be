@@ -408,14 +408,14 @@ module.exports = function (app, db) {
         limitCount = Number(5);
         skipCount = skipParam * limitCount
 
-        db.collection('feeds').find(query).limit(limitCount).skip(skipCount).count(function (err, itemCount) {
+        db.collection('feeds').find(query).sort({createdAt : -1}).limit(limitCount).skip(skipCount).count(function (err, itemCount) {
             if (err) {
                 res.send(utils.errorResponse(err.errmsg));
             } else if (itemCount == 0) {
                 res.send(utils.errorResponse("No posts"));
             } else {
-                var allPost = [], likesCount = 0, commentsCount = 0
-                db.collection('feeds').find(query).sort( { createdAt : -1 } ).limit(limitCount).skip(skipCount).forEach(function (obj) {
+                var allPost = []
+                db.collection('feeds').find(query).limit(limitCount).skip(skipCount).forEach(function (obj) {
                     var idToArray = [], totalCount = 0
                     idToArray.push(obj.userId)
                     async.each(
@@ -431,6 +431,7 @@ module.exports = function (app, db) {
                                     if (err) {
                                         res.send(utils.errorResponse(err.errmsg));
                                     } else {
+                                        var likesCount = 0, commentsCount = 0
                                         for (var i = 0; i < docs.length; i++) {
                                             if (docs[i].activity == 'like') {
                                                 ++likesCount
@@ -449,6 +450,9 @@ module.exports = function (app, db) {
                                     allPost.push(obj)
                                     newCount++
                                     if (newCount == itemCount) {
+                                        allPost.sort(function(a, b) {
+                                            return parseInt(b.createdAt) - parseInt(a.createdAt);
+                                        });
                                         res.send(utils.successResponse(null, allPost))
                                     }
                                 });
