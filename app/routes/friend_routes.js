@@ -20,7 +20,7 @@ module.exports = function (app, db) {
                         if (err) {
                             res.send(utils.errorResponse(err.errmsg));
                         } else {
-                            sendNotificationToUser(req.body.id, userName + " " + constants.frnd_req_sent, constants.activity_frnd_req_sent, '/home/friends');
+                            sendNotificationToUser(req.body.id, userName + " " + constants.frnd_req_sent,  '/home/friends');
                             res.send(utils.successResponse('Friend request sent successfully', null))
                         }
                     });
@@ -118,7 +118,7 @@ module.exports = function (app, db) {
                                                 if (err) {
                                                     res.send(utils.errorResponse(err.errmsg));
                                                 } else {
-                                                    sendNotificationToUser(req.body.id, userName + " " + '/home/friends');
+                                                    sendNotificationToUser(req.body.id, userName + " " + constants.frnd_req_accepted, '/home/friends');
                                                     res.send(utils.successResponse("We are now friends", null))
                                                 }
                                             });
@@ -174,7 +174,7 @@ module.exports = function (app, db) {
         });
     });
 
-    var sendNotificationToUser = function (userId, content, activity, routeUrl) {
+    var sendNotificationToUser = function (userId, content, routeUrl) {
         db.collection('users').findOne({ _id : userId }, (function (err, item) {
             if (err) {
                 console.log(err.errmsg)
@@ -184,7 +184,7 @@ module.exports = function (app, db) {
                 var id = item._id
                 var fcmToken = item.fcmToken
                 const notificationService = require('../../services/fcm-notification.js')
-                notificationService.updateNotificationDocument(db, id, fcmToken, content, activity, routeUrl)
+                notificationService.updateNotificationDocument(db, id, fcmToken, content, routeUrl)
             }
         }));
     }

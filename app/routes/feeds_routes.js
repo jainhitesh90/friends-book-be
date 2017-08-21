@@ -10,9 +10,7 @@ module.exports = function (app, db) {
 
     /* CREATE FEED (Admin)*/
     app.post('/feed/admin/add', [utils.isAdminAuthenticated, upload.single('content')], (req, res) => {
-        if (req.body.title == null || req.body.title == '') {
-            res.send(utils.errorResponse('Title missing'));
-        } else if (req.body.description == null || req.body.description == '') {
+        if (req.body.description == null || req.body.description == '') {
             res.send(utils.errorResponse('Description missing'));
         } else if (req.body.url == null || req.body.url == '') {
             res.send(utils.errorResponse('Url missing'));
@@ -28,7 +26,7 @@ module.exports = function (app, db) {
                     } else if (req.body.time == null || req.body.time == '') {
                         res.send(utils.errorResponse('Time missing'));
                     } else {
-                        const event = { feedType: req.body.feedType, title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, image: req.body.image, createdAt: Date.now() };
+                        const event = { feedType: req.body.feedType, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, image: req.body.image, createdAt: Date.now() };
                         db.collection('feeds').insert(event, (err, result) => {
                             if (err) {
                                 res.send(utils.errorResponse(err.errmsg));
@@ -39,7 +37,7 @@ module.exports = function (app, db) {
                     }
                     break;
                 case 'blog' :
-                    const blog = { feedType: req.body.feedType, title: req.body.title, description: req.body.description, url: req.body.url, image: req.body.image, createdAt: Date.now() };
+                    const blog = { feedType: req.body.feedType, description: req.body.description, url: req.body.url, image: req.body.image, createdAt: Date.now() };
                     db.collection('feeds').insert(blog, (err, result) => {
                         if (err) {
                             res.send(utils.errorResponse(err.errmsg));
@@ -63,10 +61,10 @@ module.exports = function (app, db) {
         var fs = require('fs');
         var file = req.file;
         if (req.body.feedType == 'post') {
-            if (req.body.title == null || req.body.title == '') {
+            if (req.body.description == null || req.body.description == '') {
                 res.send(utils.errorResponse('Describe your feed'))
             } else if (file == null || file.path == null) {
-                const feed = { feedType: req.body.feedType, userId: userId, title: req.body.title, createdAt: Date.now() };
+                const feed = { feedType: req.body.feedType, userId: userId, description : req.body.description, createdAt: Date.now() };
                 db.collection('feeds').insert(feed, (err, result) => {
                     if (err) {
                         res.send(utils.errorResponse(err.errmsg));
@@ -123,9 +121,7 @@ module.exports = function (app, db) {
                     updatedDoc = { $set: { description: req.body.description, updatedAt: Date.now() } };
                 }
             } else if (req.body.feedType == 'event') {
-                if (req.body.title == null || req.body.title == '') {
-                    res.send(utils.errorResponse('Title missing'));
-                } else if (req.body.description == null || req.body.description == '') {
+                if (req.body.description == null || req.body.description == '') {
                     res.send(utils.errorResponse('Description missing'));
                 } else if (req.body.venue == null || req.body.venue == '') {
                     res.send(utils.errorResponse('Venue missing'));
@@ -138,19 +134,17 @@ module.exports = function (app, db) {
                 } else if (req.body.image == null || req.body.image == '') {
                     res.send(utils.errorResponse('Image URL missing'));
                 } else {
-                    updatedDoc = { $set: { title: req.body.title, description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, image: req.body.image, updatedAt: Date.now() } };
+                    updatedDoc = { $set: { description: req.body.description, venue: req.body.venue, price: req.body.price, time: req.body.time, url: req.body.url, image: req.body.image, updatedAt: Date.now() } };
                 }
             } else if (req.body.feedType == 'blog') {
-                if (req.body.title == null || req.body.title == '') {
-                    res.send(utils.errorResponse('Title missing'));
-                } else if (req.body.description == null || req.body.description == '') {
+                if (req.body.description == null || req.body.description == '') {
                     res.send(utils.errorResponse('Description missing'));
                 } else if (req.body.url == null || req.body.url == '') {
                     res.send(utils.errorResponse('Full URL missing'));
                 } else if (req.body.image == null || req.body.image == '') {
                     res.send(utils.errorResponse('Image URL missing'));
                 } else {
-                    updatedDoc = { $set: { title: req.body.title, description: req.body.description, url: req.body.url, image: req.body.image, updatedAt: Date.now() } };
+                    updatedDoc = { $set: {description: req.body.description, url: req.body.url, image: req.body.image, updatedAt: Date.now() } };
                 }
             }
             db.collection('feeds').update(details, updatedDoc, (err, result) => {
@@ -212,8 +206,6 @@ module.exports = function (app, db) {
         } else {
             findCollections(0, {
                 $or: [
-                    { description: { $regex: ".*" + req.params.keyword + ".*", '$options': 'i' } },
-                    { title: { $regex: ".*" + req.params.keyword + ".*", '$options': 'i' } },
                     { description: { $regex: ".*" + req.params.keyword + ".*", '$options': 'i' } }
                 ]
             }, res)
@@ -227,7 +219,7 @@ module.exports = function (app, db) {
 
     /* Read Others Feeds */
     app.get('/feed/other-feeds/:id', utils.isUserAuthenticated, (req, res) => {
-        findCollections(0, { userId: Number(req.params.id) }, res)
+        findCollections(0, { userId: req.params.id }, res)
     });
 
     /* Read single feed */
@@ -423,7 +415,7 @@ module.exports = function (app, db) {
                 res.send(utils.errorResponse("No posts"));
             } else {
                 var allPost = [], likesCount = 0, commentsCount = 0
-                db.collection('feeds').find(query).limit(limitCount).skip(skipCount).forEach(function (obj) {
+                db.collection('feeds').find(query).sort( { createdAt : -1 } ).limit(limitCount).skip(skipCount).forEach(function (obj) {
                     var idToArray = [], totalCount = 0
                     idToArray.push(obj.userId)
                     async.each(
@@ -461,8 +453,7 @@ module.exports = function (app, db) {
                                     }
                                 });
                             });
-                        },
-                        console.log("completed")
+                        }
                     );
                 });
             }
