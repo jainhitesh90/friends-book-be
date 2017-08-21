@@ -408,7 +408,7 @@ module.exports = function (app, db) {
         limitCount = Number(5);
         skipCount = skipParam * limitCount
 
-        db.collection('feeds').find(query).sort({createdAt : -1}).limit(limitCount).skip(skipCount).count(function (err, itemCount) {
+        db.collection('feeds').find(query).limit(limitCount).skip(skipCount).count(function (err, itemCount) {
             if (err) {
                 res.send(utils.errorResponse(err.errmsg));
             } else if (itemCount == 0) {
