@@ -1,1 +1,1 @@
-# AllInOneBlogs NodeJs app (Backend)
+# FriendsBook backend Express app
